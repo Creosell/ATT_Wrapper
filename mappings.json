@@ -1,0 +1,225 @@
+[
+  // CPU parameters group
+  {
+    "pattern": "cpu name",
+    "group": "CPU",
+    "ufn": "Model Name"
+  },
+  {
+    "pattern": "cpu revision",
+    "group": "CPU",
+    "ufn": "Revision"
+  },
+  {
+    "pattern": "cpu temperature",
+    "group": "CPU",
+    "ufn": "Temperature"
+  },
+
+  // BIOS parameters group
+  {
+    "pattern": "bios date",
+    "group": "BIOS",
+    "ufn": "Release Date"
+  },
+  {
+    "pattern": "bios version",
+    "group": "BIOS",
+    "ufn": "Version"
+  },
+  {
+    "pattern": "bios vendor",
+    "group": "BIOS",
+    "ufn": "Vendor"
+  },
+  {
+    "pattern": "bios size",
+    "group": "BIOS",
+    "ufn": "Size"
+  },
+  {
+    "pattern": "embedded controller",
+    "group": "BIOS",
+    "ufn": "EC version"
+  },
+
+  // System Info parameters group
+  {
+    "pattern": "sku",
+    "group": "System Info",
+    "ufn": "Part number (SKU)"
+  },
+  {
+    "pattern": "serial number",
+    "group": "System Info",
+    "ufn": "Serial number pattern"
+  },
+  {
+    "pattern": "system manufacturer",
+    "group": "System Info",
+    "ufn": "Manufacturer"
+  },
+  {
+    "pattern": "system manufacturer",
+    "group": "System Info",
+    "ufn": "Manufacturer"
+  },
+  {
+    "pattern": "system product",
+    "group": "System Info",
+    "ufn": "Product name"
+  },
+  {
+    "pattern": "system version",
+    "group": "System Info",
+    "ufn": "Version"
+  },
+  {
+    "pattern": "uuid",
+    "group": "System Info",
+    "ufn": "UUID Uniqueness"
+  },
+
+  // Motherboard parameters group
+  {
+    "pattern": "motherboard manufacturer",
+    "group": "Motherboard",
+    "ufn": "Manufacturer"
+  },
+  {
+    "pattern": "motherboard product",
+    "group": "Motherboard",
+    "ufn": "Product ID"
+  },
+  {
+    "pattern": "motherboard name",
+    "group": "Motherboard",
+    "ufn": "Name"
+  },
+  {
+    "pattern": "motherboard chipset",
+    "group": "Motherboard",
+    "ufn": "Chipset"
+  },
+
+  // RAM parameters group
+  {
+    "pattern": "memory",
+    "group": "Memory",
+    "ufn": "Total memory"
+  },
+  {
+    "pattern": "ram",
+    "group": "Memory",
+    "ufn": "DIMM Check"
+  },
+
+  // Display parameters group
+  {
+    "pattern": "monitor id",
+    "group": "Display",
+    "ufn": "Monitor ID"
+  },
+  {
+    "pattern": "monitor manufacturer",
+    "group": "Display",
+    "ufn": "Monitor manufacturer"
+  },
+  {
+    "pattern": "graphic",
+    "group": "Display",
+    "ufn": "GPU Check"
+  },
+
+  // SSD parameters group
+  {
+    "pattern": "ssd model",
+    "group": "Storage",
+    "ufn": "Model"
+  },
+  {
+    "pattern": "ssd power on",
+    "group": "Storage",
+    "ufn": "Power on hours"
+  },
+  {
+    "pattern": "ssd capacity",
+    "group": "Storage",
+    "ufn": "Capacity"
+  },
+
+  // Wi-Fi parameters group
+  {
+    "pattern": "wifi adapter",
+    "group": "Wi-Fi",
+    "ufn": "Wi-Fi Adapter"
+  },
+  {
+    "pattern": "wifi mac",
+    "group": "Wi-Fi",
+    "ufn": "Wi-Fi MAC"
+  },
+  {
+    "pattern": "wifi mac addres u/l",
+    "group": "Wi-Fi",
+    "ufn": "Wi-Fi MAC Uniqueness"
+  },
+
+  // Ethernet parameters group
+  {
+    "pattern": "ethernet adapter",
+    "group": "Ethernet",
+    "ufn": "Ethernet Adapter"
+  },
+  {
+    "pattern": "ethernet mac",
+    "group": "Ethernet",
+    "ufn": "Ethernet MAC"
+  },
+
+  // Peripherals parameters group
+  {
+    "pattern": "pd_version",
+    "group": "Peripherals",
+    "ufn": "PD Firmware"
+  },
+  {
+    "pattern": "usb",
+    "group": "Peripherals",
+    "ufn": "USB Ports"
+  },
+  {
+    "pattern": "camera",
+    "group": "Peripherals",
+    "ufn": "Webcam"
+  },
+  {
+    "pattern": "biometric",
+    "group": "Peripherals",
+    "ufn": "Biometric"
+  },
+  {
+    "pattern": "touchpad",
+    "group": "Peripherals",
+    "ufn": "Touchpad"
+  },
+
+  // TPM parameters group
+  {
+    "pattern": "version of tpm",
+    "group": "TPM",
+    "ufn": "Version"
+  },
+  {
+    "pattern": "tpm vendor",
+    "group": "TPM",
+    "ufn": "Vendor"
+  }
+
+  // Battery parameters group
+  {
+    "pattern": "battery wear",
+    "group": "Battery",
+    "ufn": "Wear level"
+  }
+]

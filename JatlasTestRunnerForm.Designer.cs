@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
             {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(JatlasTestRunnerForm));
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.btnUpdate = new System.Windows.Forms.Button();
             this.btnCommon = new System.Windows.Forms.Button();
@@ -146,8 +147,9 @@
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.dgvResults);
             this.Controls.Add(this.flowLayoutPanel1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "JatlasTestRunnerForm";
-            this.Text = "JatlasTestRunnerForm";
+            this.Text = "ATT Runner";
             this.flowLayoutPanel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).EndInit();
             this.statusStrip1.ResumeLayout(false);
