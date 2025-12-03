@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using Serilog;
 
@@ -16,9 +17,7 @@ namespace ATT_Wrapper
         private ILogParser _currentParser;
         private MappingManager _mapper;
 
-        // Связь: Строка Группы -> Список её дочерних строк
         private Dictionary<DataGridViewRow, List<DataGridViewRow>> _groupChildren = new Dictionary<DataGridViewRow, List<DataGridViewRow>>();
-        // Кэш для быстрого поиска строки группы по имени
         private Dictionary<string, DataGridViewRow> _groupRowsCache = new Dictionary<string, DataGridViewRow>();
 
         public JatlasTestRunnerForm()
@@ -28,9 +27,7 @@ namespace ATT_Wrapper
             SetupLogging();
             ApplyModernStyle();
 
-            // Подписка на клик для сворачивания/разворачивания
             dgvResults.CellClick += DgvResults_CellClick;
-
             string mappingPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mappings.json");
             _mapper = new MappingManager(mappingPath);
             }
@@ -48,6 +45,7 @@ namespace ATT_Wrapper
             {
             dgvResults.Columns.Clear();
             dgvResults.RowHeadersVisible = false;
+            dgvResults.ColumnHeadersVisible = false;
             dgvResults.Columns.Add("Status", "Status");
             dgvResults.Columns.Add("Component", "Component / Description");
             dgvResults.Columns[0].FillWeight = 15;
@@ -64,16 +62,21 @@ namespace ATT_Wrapper
             dgvResults.BorderStyle = BorderStyle.None;
             dgvResults.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             dgvResults.GridColor = Color.FromArgb(230, 230, 230);
-            dgvResults.EnableHeadersVisualStyles = false;
-            dgvResults.ColumnHeadersDefaultCellStyle.BackColor = Color.White;
-            dgvResults.ColumnHeadersDefaultCellStyle.ForeColor = Color.Gray;
-            dgvResults.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            dgvResults.ColumnHeadersHeight = 40;
+
             dgvResults.RowTemplate.Height = 32;
             dgvResults.DefaultCellStyle.SelectionBackColor = Color.FromArgb(240, 245, 255);
             dgvResults.DefaultCellStyle.SelectionForeColor = Color.Black;
-            // Разрешаем кликать по ячейкам без входа в режим редактирования
             dgvResults.ReadOnly = true;
+
+            if (rtbLog != null)
+                {
+                rtbLog.BackColor = Color.FromArgb(30, 30, 30);
+                rtbLog.ForeColor = Color.Gainsboro;
+                rtbLog.Font = new Font("Consolas", 10F);
+                rtbLog.BorderStyle = BorderStyle.None;
+                rtbLog.WordWrap = false;
+                rtbLog.ScrollBars = RichTextBoxScrollBars.Both;
+                }
 
             StyleButton(btnUpdate, Color.FromArgb(240, 240, 240));
             StyleButton(btnCommon, Color.FromArgb(225, 240, 255));
@@ -92,68 +95,48 @@ namespace ATT_Wrapper
             btn.Cursor = Cursors.Hand;
             }
 
-        // --- ЛОГИКА ГРУППИРОВКИ И ВЛОЖЕННОСТИ ---
+        // --- GRID LOGIC ---
 
         private void DgvResults_CellClick(object sender, DataGridViewCellEventArgs e)
             {
-            if (e.RowIndex < 0) return; // Клик по заголовку
-
+            if (e.RowIndex < 0) return;
             var clickedRow = dgvResults.Rows[e.RowIndex];
-
-            // Если кликнули по строке группы - переключаем видимость детей
-            if (_groupChildren.ContainsKey(clickedRow))
-                {
-                ToggleGroup(clickedRow);
-                }
+            if (_groupChildren.ContainsKey(clickedRow)) ToggleGroup(clickedRow);
             }
 
         private void ToggleGroup(DataGridViewRow groupRow, bool? forceState = null)
             {
             if (!_groupChildren.ContainsKey(groupRow)) return;
-
             var children = _groupChildren[groupRow];
             if (children.Count == 0) return;
 
-            // Определяем текущее состояние (развернуто если первый ребенок видим)
             bool isExpanded = children[0].Visible;
             bool newState = forceState.HasValue ? forceState.Value : !isExpanded;
-
-            // Если состояние не меняется, выходим
             if (isExpanded == newState) return;
 
-            // Обновляем иконку
-            string statusText = groupRow.Cells[0].Value.ToString();
-            // Убираем старую стрелку
-            statusText = statusText.Replace("▶ ", "").Replace("▼ ", "");
-            // Ставим новую
+            string statusText = groupRow.Cells[0].Value.ToString().Replace("▶ ", "").Replace("▼ ", "");
             groupRow.Cells[0].Value = ( newState ? "▼ " : "▶ " ) + statusText;
 
-            // Скрываем/Показываем детей
-            foreach (var child in children)
-                {
-                child.Visible = newState;
-                }
+            foreach (var child in children) child.Visible = newState;
             }
 
         private void ProcessTestResult(string status, string message)
             {
             var (groupName, ufn) = _mapper.IdentifyCheck(message);
 
-            // Если маппинга нет — просто добавляем строку в конец
             if (string.IsNullOrEmpty(groupName))
                 {
                 AddRowToEnd(status, message);
                 return;
                 }
 
-            // Создаем или получаем группу
             if (!_groupRowsCache.ContainsKey(groupName))
                 {
                 int idx = dgvResults.Rows.Add($"▶ PASS", $"{groupName}: OK");
                 var newGroupRow = dgvResults.Rows[idx];
 
                 newGroupRow.DefaultCellStyle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-                newGroupRow.DefaultCellStyle.BackColor = Color.FromArgb(245, 245, 245); // Легкий серый фон для групп
+                newGroupRow.DefaultCellStyle.BackColor = Color.FromArgb(245, 245, 245);
                 SetRowColor(newGroupRow, "PASS", isGroup: true);
 
                 _groupRowsCache[groupName] = newGroupRow;
@@ -162,45 +145,29 @@ namespace ATT_Wrapper
 
             var groupRow = _groupRowsCache[groupName];
 
-            // Если FAIL — обновляем статус группы и АВТОМАТИЧЕСКИ РАЗВОРАЧИВАЕМ
             if (status == "FAIL")
                 {
-                // Если группа была PASS, меняем на FAIL
                 if (!groupRow.Cells[0].Value.ToString().Contains("FAIL"))
                     {
-                    groupRow.Cells[0].Value = "▼ FAIL"; // Сразу ставим "развернуто"
+                    groupRow.Cells[0].Value = "▼ FAIL";
                     groupRow.Cells[1].Value = $"{groupName}: Failed";
                     SetRowColor(groupRow, "FAIL", isGroup: true);
                     }
-
-                // Принудительно разворачиваем, чтобы показать ошибку
                 ToggleGroup(groupRow, forceState: true);
                 }
 
-            // Добавляем дочернюю строку
-            // Вставляем физически в таблицу сразу после последнего известного ребенка этой группы
-            // Или после самой группы, если детей еще нет.
-
             var children = _groupChildren[groupRow];
             int insertIndex = groupRow.Index + children.Count + 1;
-
-            // Защита от выхода за границы (хотя Rows.Add/Insert это обрабатывают, но на всякий случай)
             if (insertIndex > dgvResults.Rows.Count) insertIndex = dgvResults.Rows.Count;
 
             dgvResults.Rows.Insert(insertIndex, status, ufn ?? message);
             var childRow = dgvResults.Rows[insertIndex];
+            SetRowColor(childRow, status, isGroup: false);
 
-            // Настройка стиля ребенка
-            childRow.Cells[1].Style.Padding = new Padding(25, 0, 0, 0); // Отступ
+            childRow.Cells[1].Style.Padding = new Padding(25, 0, 0, 0);
             childRow.Cells[1].Style.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
 
-            if (status == "FAIL") childRow.Cells[0].Style.ForeColor = Color.DarkRed;
-
-            // Добавляем в список детей
             children.Add(childRow);
-
-            // По умолчанию СКРЫВАЕМ новую строку, если группа свернута
-            // Проверяем текущее состояние группы по иконке
             bool isGroupExpanded = groupRow.Cells[0].Value.ToString().Contains("▼");
             childRow.Visible = isGroupExpanded;
             }
@@ -242,17 +209,17 @@ namespace ATT_Wrapper
 
         private void UpdateLastGridRow(string newMessage)
             {
-            // Обновляем последнюю видимую строку (упрощенно)
             if (dgvResults.Rows.Count > 0)
                 dgvResults.Rows[dgvResults.Rows.Count - 1].Cells[1].Value = newMessage;
             }
 
-        // --- ЗАПУСК И ПАРСИНГ (Без изменений логики) ---
+        // --- EXECUTION ---
 
         private void RunProcess(string batchFile, string arguments)
             {
             ToggleButtons(false);
             dgvResults.Rows.Clear();
+            rtbLog.Clear();
             _groupChildren.Clear();
             _groupRowsCache.Clear();
 
@@ -271,9 +238,11 @@ namespace ATT_Wrapper
                 StandardOutputEncoding = System.Text.Encoding.UTF8
                 };
 
-            if (psi.EnvironmentVariables.ContainsKey("JATLAS_LOG_LEVEL")) psi.EnvironmentVariables["JATLAS_LOG_LEVEL"] = "INFO";
-            else psi.EnvironmentVariables.Add("JATLAS_LOG_LEVEL", "INFO");
-            if (!psi.EnvironmentVariables.ContainsKey("PYTHONUNBUFFERED")) psi.EnvironmentVariables.Add("PYTHONUNBUFFERED", "1");
+            var env = psi.EnvironmentVariables;
+            env["JATLAS_LOG_LEVEL"] = "INFO";
+            env["PYTHONUNBUFFERED"] = "1";
+            env["FORCE_COLOR"] = "1";
+            env["CLICOLOR_FORCE"] = "1";
 
             try
                 {
@@ -301,23 +270,51 @@ namespace ATT_Wrapper
             {
             char[] buffer = new char[1024];
             System.Text.StringBuilder lineBuffer = new System.Text.StringBuilder();
+
             try
                 {
                 while (!_currentProcess.HasExited)
                     {
                     int bytesRead = await reader.ReadAsync(buffer, 0, buffer.Length);
                     if (bytesRead == 0) break;
+
                     lineBuffer.Append(buffer, 0, bytesRead);
                     string content = lineBuffer.ToString();
-                    int newlineIndex;
-                    while (( newlineIndex = content.IndexOf('\n') ) >= 0)
+
+                    // Ищем любой разделитель строк (\r или \n)
+                    // Это позволит разделить "Running task... \r" и следующий лог
+                    int splitIndex;
+                    char[] separators = { '\n', '\r' };
+
+                    while (( splitIndex = content.IndexOfAny(separators) ) >= 0)
                         {
-                        ParseAndDisplayOutput(content.Substring(0, newlineIndex).Trim());
-                        content = content.Substring(newlineIndex + 1);
+                        string line = content.Substring(0, splitIndex).Trim();
+                        if (!string.IsNullOrEmpty(line))
+                            {
+                            ParseAndDisplayOutput(line);
+                            }
+
+                        // Пропускаем сам разделитель и возможный следующий (\r\n)
+                        int nextCharIdx = splitIndex + 1;
+                        if (nextCharIdx < content.Length &&
+                            ( ( content[splitIndex] == '\r' && content[nextCharIdx] == '\n' ) ||
+                             ( content[splitIndex] == '\n' && content[nextCharIdx] == '\r' ) ))
+                            {
+                            nextCharIdx++;
+                            }
+
+                        content = content.Substring(nextCharIdx);
                         }
+
                     lineBuffer.Clear();
                     lineBuffer.Append(content);
-                    if (content.Contains("Press any key to continue")) { ParseAndDisplayOutput(content.Trim()); lineBuffer.Clear(); }
+
+                    // Проверка на "висящий" промпт (без Enter)
+                    if (content.Contains("Press any key to continue"))
+                        {
+                        ParseAndDisplayOutput(content.Trim());
+                        lineBuffer.Clear();
+                        }
                     }
                 }
             catch (Exception ex) { Log.Debug($"Stream read error: {ex.Message}"); }
@@ -328,6 +325,23 @@ namespace ATT_Wrapper
             if (string.IsNullOrWhiteSpace(line)) return;
             Debug.WriteLine($"[RAW] {line}");
 
+            // 1. Сначала чистим от ANSI, чтобы анализ текста работал корректно
+            string plainLine = Regex.Replace(line, @"\x1B\[[^@-~]*[@-~]", "");
+
+            // 2. Обновляем Expert View (Фильтрация мусора)
+            this.Invoke((Action)( () =>
+            {
+                bool isInfo = plainLine.Contains("INFO"); // Фильтр служебных INFO
+                bool isRunningTask = plainLine.TrimStart().StartsWith("Running task:"); // Фильтр таймеров задач
+
+                if (!isInfo && !isRunningTask)
+                    {
+                    // Пишем ОРИГИНАЛЬНУЮ строку с цветами, но отфильтрованную
+                    AppendAnsiText(rtbLog, line + Environment.NewLine);
+                    }
+            } ));
+
+            // 3. Обработка завершения (Pause)
             if (line.Contains("Press any key"))
                 {
                 this.Invoke((Action)( () => { if (statusLabel != null) statusLabel.Text = "Finalizing..."; } ));
@@ -335,7 +349,8 @@ namespace ATT_Wrapper
                 return;
                 }
 
-            _currentParser?.ParseLine(line,
+            // 4. Парсинг для таблицы (Simple View)
+            _currentParser?.ParseLine(plainLine,
                 (status, msg) => this.Invoke((Action)( () =>
                 {
                     if (_currentParser is JatlasTestParser && ( status == "PASS" || status == "FAIL" ))
@@ -347,19 +362,70 @@ namespace ATT_Wrapper
             );
             }
 
+        private void AppendAnsiText(RichTextBox box, string text)
+            {
+            int cursor = 0;
+            var matches = Regex.Matches(text, @"\x1B\[(\d+)(;\d+)*m");
+
+            if (matches.Count == 0)
+                {
+                box.AppendText(text);
+                return;
+                }
+
+            foreach (Match match in matches)
+                {
+                box.AppendText(text.Substring(cursor, match.Index - cursor));
+
+                string code = match.Groups[1].Value;
+                int colorCode = int.Parse(code);
+                box.SelectionStart = box.TextLength;
+                box.SelectionLength = 0;
+                box.SelectionColor = GetColorFromAnsi(colorCode);
+
+                cursor = match.Index + match.Length;
+                }
+            box.AppendText(text.Substring(cursor));
+            }
+
+        private Color GetColorFromAnsi(int code)
+            {
+            switch (code)
+                {
+                case 30: return Color.Gray;
+                case 31: return Color.Salmon; // Red
+                case 32: return Color.LightGreen; // Green
+                case 33: return Color.Gold; // Yellow
+                case 34: return Color.CornflowerBlue; // Blue
+                case 35: return Color.Violet; // Magenta
+                case 36: return Color.Cyan;
+                case 37: return Color.White;
+                case 90: return Color.DimGray;
+                case 91: return Color.Red;
+                case 92: return Color.Lime;
+                case 93: return Color.Yellow;
+                case 0: return Color.Gainsboro;
+                default: return Color.Gainsboro;
+                }
+            }
+
         // --- BUTTONS ---
         private void btnUpdate_Click(object sender, EventArgs e) { _currentParser = new JatlasUpdateParser(); RunProcess("update.bat", ""); }
         private void btnCommon_Click(object sender, EventArgs e) { _currentParser = new JatlasTestParser((idx, msg) => UpdateLastGridRow(msg)); RunProcess("run-jatlas-auto.bat", "-l common --stage dev"); }
         private void btnSpecial_Click(object sender, EventArgs e) { _currentParser = new JatlasTestParser((idx, msg) => UpdateLastGridRow(msg)); RunProcess("run-jatlas-auto.bat", "-l special --stage dev"); }
+        private void btnAging_Click(object sender, EventArgs e) { _currentParser = new JatlasAgingParser(); RunProcess("run-jatlas-auto.bat", "-l aging --stage dev"); }
         private void btnCommonOffline_Click(object sender, EventArgs e) { _currentParser = new JatlasTestParser((idx, msg) => UpdateLastGridRow(msg)); RunProcess("run-jatlas-auto.bat", "-l common --offline"); }
         private void taskKillBtn_Click(object sender, EventArgs e) => KillProcess();
 
         private void ToggleButtons(bool state)
             {
-            if (btnUpdate != null) btnUpdate.Enabled = state;
-            if (btnCommon != null) btnCommon.Enabled = state;
-            if (btnSpecial != null) btnSpecial.Enabled = state;
-            if (btnCommonOffline != null) btnCommonOffline.Enabled = state;
+            foreach (Control c in this.Controls) RecurseEnable(c, state);
+            if (taskKillBtn != null) taskKillBtn.Enabled = true;
+            }
+        private void RecurseEnable(Control c, bool state)
+            {
+            if (c is Button && !c.Name.Contains("Kill")) c.Enabled = state;
+            if (c.HasChildren) foreach (Control child in c.Controls) RecurseEnable(child, state);
             }
 
         public void KillProcess()

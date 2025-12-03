@@ -214,7 +214,7 @@
     "pattern": "tpm vendor",
     "group": "TPM",
     "ufn": "Vendor"
-  }
+  },
 
   // Battery parameters group
   {
