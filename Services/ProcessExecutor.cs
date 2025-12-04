@@ -36,45 +36,33 @@ namespace ATT_Wrapper.Services
             env["PYTHONUNBUFFERED"] = "1";
             env["FORCE_COLOR"] = "1";
             env["CLICOLOR_FORCE"] = "1";
+            env["PYTHONIOENCODING"] = "utf-8"; // Исправляет символы градусов 
 
             _process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
             _process.Exited += (s, e) => OnExited?.Invoke();
 
             _process.Start();
             Log.Information($"Started process PID: {_process.Id}");
 
-            // Асинхронное чтение без блокировки
             Task.Run(() => ReadStreamAsync(_process.StandardOutput));
             Task.Run(() => ReadStreamAsync(_process.StandardError));
             }
 
         public void SendInput(string input)
             {
-            try
-                {
-                _process?.StandardInput.WriteLine(input);
-                }
-            catch (Exception ex)
-                {
-                Log.Warning(ex, "Failed to send input to process");
-                }
+            try { _process?.StandardInput.WriteLine(input); }
+            catch (Exception ex) { Log.Warning(ex, "Failed to send input"); }
             }
 
         public void Kill()
             {
             if (_process == null || _process.HasExited) return;
-
             try
                 {
-                // Убиваем всё дерево процессов
                 Process.Start(new ProcessStartInfo("taskkill", $"/F /T /PID {_process.Id}")
                     { CreateNoWindow = true, UseShellExecute = false });
                 }
-            catch (Exception ex)
-                {
-                Log.Error(ex, "Failed to kill process tree");
-                }
+            catch (Exception ex) { Log.Error(ex, "Kill failed"); }
             }
 
         private async Task ReadStreamAsync(StreamReader reader)
@@ -92,18 +80,30 @@ namespace ATT_Wrapper.Services
                     lineBuffer.Append(buffer, 0, bytesRead);
                     string content = lineBuffer.ToString();
 
-                    int newlineIndex;
-                    while (( newlineIndex = content.IndexOf('\n') ) >= 0)
+                    // Разделяем строки по \n или \r (чтобы ловить обновления прогресс-бара)
+                    int splitIndex;
+                    char[] separators = { '\n', '\r' };
+
+                    while (( splitIndex = content.IndexOfAny(separators) ) >= 0)
                         {
-                        string line = content.Substring(0, newlineIndex).TrimEnd('\r');
-                        OnOutputReceived?.Invoke(line);
-                        content = content.Substring(newlineIndex + 1);
+                        string line = content.Substring(0, splitIndex).Trim();
+                        if (!string.IsNullOrEmpty(line)) OnOutputReceived?.Invoke(line);
+
+                        // Пропускаем сам разделитель и возможный парный символ (\r\n)
+                        int nextCharIdx = splitIndex + 1;
+                        if (nextCharIdx < content.Length &&
+                            ( ( content[splitIndex] == '\r' && content[nextCharIdx] == '\n' ) ||
+                             ( content[splitIndex] == '\n' && content[nextCharIdx] == '\r' ) ))
+                            {
+                            nextCharIdx++;
+                            }
+                        content = content.Substring(nextCharIdx);
                         }
 
                     lineBuffer.Clear();
                     lineBuffer.Append(content);
 
-                    // Обработка "висящих" промптов (например pause)
+                    // Ловим "висящий" запрос ввода
                     if (content.Contains("Press any key to continue"))
                         {
                         OnOutputReceived?.Invoke(content.Trim());
@@ -111,10 +111,7 @@ namespace ATT_Wrapper.Services
                         }
                     }
                 }
-            catch (Exception ex)
-                {
-                Log.Debug($"Stream read ended: {ex.Message}");
-                }
+            catch (Exception ex) { Log.Debug($"Stream read ended: {ex.Message}"); }
             }
         }
     }

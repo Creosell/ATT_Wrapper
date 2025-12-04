@@ -8,6 +8,7 @@ namespace ATT_Wrapper
         bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress);
         }
 
+    // 1. STANDARD TEST PARSER
     public class JatlasTestParser : ILogParser
         {
         private int _lastUploaderRowIndex = -1;
@@ -20,18 +21,19 @@ namespace ATT_Wrapper
 
         public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
             {
-            // Task Progress
-            // Ищем строку вида "Running task: TaskName 0:00:01"
-            var taskMatch = Regex.Match(line, @"Running task:\s+(.*?)\s+\d+:\d+:\d+", RegexOptions.IgnoreCase);
-
+            // Task Progress: Ловим все строки Running task
+            var taskMatch = Regex.Match(line, @"Running task:\s+(.*)", RegexOptions.IgnoreCase);
             if (taskMatch.Success)
                 {
-                // Берем только имя задачи из первой группы
-                string cleanTaskName = taskMatch.Groups[1].Value.Trim();
-                onProgress?.Invoke($"Running: {cleanTaskName}");
+                string content = taskMatch.Groups[1].Value.Trim();
+                // Отрезаем таймер в конце (например " 0:00:23")
+                string cleanName = Regex.Replace(content, @"\s+\d+:\d+:\d+$", "");
+
+                onProgress?.Invoke($"Running: {cleanName}");
                 return false;
                 }
 
+            // Report created
             var reportMatch = Regex.Match(line, @"<Report:([^>]+)>\s+created", RegexOptions.IgnoreCase);
             if (reportMatch.Success)
                 {
@@ -40,6 +42,7 @@ namespace ATT_Wrapper
                 return true;
                 }
 
+            // Uploaders
             var uploaderMatch = Regex.Match(line, @"^\s*<Uploader:([^>]+)>\s+(.*)", RegexOptions.IgnoreCase);
             if (uploaderMatch.Success)
                 {
@@ -74,6 +77,7 @@ namespace ATT_Wrapper
                 return true;
                 }
 
+            // NextCloud multiline fix
             if (_lastUploaderRowIndex == -2)
                 {
                 if (line.Contains(".json"))
@@ -91,6 +95,7 @@ namespace ATT_Wrapper
                 if (line.Trim().Length > 0 && !line.StartsWith(" ")) _lastUploaderRowIndex = -1;
                 }
 
+            // Standard PASS/FAIL
             var resultMatch = Regex.Match(line, @"^\s*(PASS|FAIL|ERROR)\s+(.*)", RegexOptions.IgnoreCase);
             if (resultMatch.Success)
                 {
@@ -102,6 +107,7 @@ namespace ATT_Wrapper
             }
         }
 
+    // 2. UPDATER PARSER
     public class JatlasUpdateParser : ILogParser
         {
         public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
@@ -118,14 +124,11 @@ namespace ATT_Wrapper
             if (line.Contains("Installing dependencies")) { onProgress?.Invoke("Poetry: Installing..."); return false; }
             if (line.Contains("Installing the current project")) { onResult?.Invoke("PASS", "Poetry: Installed"); return true; }
 
-            if (line.Contains("Removing old files")) { onResult?.Invoke("INFO", "Cleanup: Old files removed"); return true; }
-            if (line.Contains("Copy link")) { onResult?.Invoke("INFO", "System: Shortcuts updated"); return true; }
-            if (line.Contains("uv ") && line.Contains("installed")) { onResult?.Invoke("INFO", "System: UV tools updated"); return true; }
-
             return false;
             }
         }
 
+    // 3. AGING PARSER
     public class JatlasAgingParser : ILogParser
         {
         public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)

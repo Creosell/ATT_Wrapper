@@ -9,7 +9,6 @@ namespace ATT_Wrapper.Components
         private readonly DataGridView _grid;
         private readonly MappingManager _mapper;
 
-        // Состояние групп
         private Dictionary<DataGridViewRow, List<DataGridViewRow>> _groupChildren = new Dictionary<DataGridViewRow, List<DataGridViewRow>>();
         private Dictionary<string, DataGridViewRow> _groupRowsCache = new Dictionary<string, DataGridViewRow>();
 
@@ -42,7 +41,6 @@ namespace ATT_Wrapper.Components
 
         public void HandleLogMessage(string status, string message)
             {
-            // 1. Определяем группу через конфиг
             var (groupName, ufn) = _mapper.IdentifyCheck(message);
 
             if (string.IsNullOrEmpty(groupName))
@@ -51,20 +49,17 @@ namespace ATT_Wrapper.Components
                 return;
                 }
 
-            // 2. Создаем или получаем группу
             if (!_groupRowsCache.ContainsKey(groupName))
                 {
                 CreateGroup(groupName);
                 }
             var groupRow = _groupRowsCache[groupName];
 
-            // 3. Обновляем статус группы при ошибке
             if (status == "FAIL")
                 {
                 UpdateGroupToFail(groupRow, groupName);
                 }
 
-            // 4. Добавляем вложенную запись
             AddChildRow(groupRow, status, ufn ?? message);
             }
 
@@ -101,7 +96,6 @@ namespace ATT_Wrapper.Components
             {
             var children = _groupChildren[groupRow];
             int insertIndex = groupRow.Index + children.Count + 1;
-
             if (insertIndex > _grid.Rows.Count) insertIndex = _grid.Rows.Count;
 
             _grid.Rows.Insert(insertIndex, status, message);
@@ -113,7 +107,6 @@ namespace ATT_Wrapper.Components
 
             children.Add(childRow);
 
-            // Видимость зависит от состояния группы
             bool isExpanded = groupRow.Cells[0].Value.ToString().Contains("▼");
             childRow.Visible = isExpanded;
             }
@@ -151,7 +144,6 @@ namespace ATT_Wrapper.Components
 
         private void SetRowColor(DataGridViewRow row, string status, bool isGroup = false)
             {
-            // Логика цветов перенесена сюда
             Color bg = isGroup ? ( status == "FAIL" ? Color.FromArgb(255, 235, 235) : Color.FromArgb(245, 245, 245) )
                                : ( status == "FAIL" ? Color.FromArgb(255, 230, 230) : Color.White );
 
