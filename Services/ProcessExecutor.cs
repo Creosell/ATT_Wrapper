@@ -30,16 +30,18 @@ namespace ATT_Wrapper.Services
                 StandardOutputEncoding = Encoding.UTF8
                 };
 
-            // Настройка окружения для Python/Rich/Loguru
+            // Environment settings for Rich/Loguru
             var env = psi.EnvironmentVariables;
             env["JATLAS_LOG_LEVEL"] = "INFO";
             env["PYTHONUNBUFFERED"] = "1";
-
-            // Rich color settings
-            env["FORCE_COLOR"] = "true";     // Принудительные цвета для rich
-            env["CLICOLOR_FORCE"] = "1";     // Стандарт BSD/Linux
+            env["FORCE_COLOR"] = "1";
+            env["CLICOLOR_FORCE"] = "1";
             env["PYTHONIOENCODING"] = "utf-8";
-            env["TERM"] = "xterm";           // Используем простой xterm, чтобы коды были стандартными (30-37)
+            env["TERM"] = "xterm-256color"; // Try 256 color again, standard for modern libs
+
+            // Prevent line wrapping
+            env["COLUMNS"] = "250";
+            env["WIDTH"] = "250";   // Some libs check this
 
             _process = new Process { StartInfo = psi, EnableRaisingEvents = true };
             _process.Exited += (s, e) => OnExited?.Invoke();
@@ -83,15 +85,15 @@ namespace ATT_Wrapper.Services
                     lineBuffer.Append(buffer, 0, bytesRead);
                     string content = lineBuffer.ToString();
 
-                    // Разделение по \n и \r для правильной обработки прогресса
                     int splitIndex;
                     char[] separators = { '\n', '\r' };
 
                     while (( splitIndex = content.IndexOfAny(separators) ) >= 0)
                         {
-                        string line = content.Substring(0, splitIndex).Trim();
-                        // Фильтруем пустые строки, если нужно, или передаем как есть
-                        if (!string.IsNullOrEmpty(line)) OnOutputReceived?.Invoke(line);
+                        string line = content.Substring(0, splitIndex).TrimEnd(); // TrimEnd to keep indentation if any
+
+                        // Pass through non-empty lines
+                        if (line.Length > 0) OnOutputReceived?.Invoke(line);
 
                         int nextCharIdx = splitIndex + 1;
                         if (nextCharIdx < content.Length &&
