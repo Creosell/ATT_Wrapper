@@ -19,12 +19,14 @@ namespace ATT_Wrapper
         private readonly MappingManager _mapper;
         private ILogParser _currentParser;
 
+        // Цвет по умолчанию для Expert Log
+        private readonly Color _defaultColor = Color.Gainsboro;
+
         public JatlasTestRunnerForm()
             {
             InitializeComponent();
             SetupLogging();
 
-            // Инициализация сервисов
             _executor = new ProcessExecutor();
             string mappingPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mappings.json");
             _mapper = new MappingManager(mappingPath);
@@ -44,8 +46,6 @@ namespace ATT_Wrapper
                 .CreateLogger();
             Log.Information("=== App Started ===");
             }
-
-        // --- HANDLERS ---
 
         private void RunTest(ILogParser parser, string script, string args)
             {
@@ -70,23 +70,24 @@ namespace ATT_Wrapper
 
         private void HandleOutput(string line)
             {
-            // 0. Защита от вызова на закрытой форме
             if (this.IsDisposed || !this.IsHandleCreated) return;
-
             if (string.IsNullOrWhiteSpace(line)) return;
 
-            // 1. Возвращаем логи в Output Visual Studio (с фильтром спама)
-            // Не пишем в консоль строки прогресса, чтобы не засорять её
-            bool isProgress = line.TrimStart().StartsWith("Running task:", StringComparison.OrdinalIgnoreCase);
+            // 1. Создаем чистую версию для логики (удаляем ANSI)
+            string plainLine = Regex.Replace(line, @"\x1B\[[^@-~]*[@-~]", "");
+
+            // 2. Определяем, является ли строка прогресс-баром
+            bool isProgress = plainLine.TrimStart().StartsWith("Running task:", StringComparison.OrdinalIgnoreCase);
+
+            // 3. Пишем в Debug (без спама)
             if (!isProgress)
                 {
                 Debug.WriteLine($"[RAW] {line}");
                 }
 
-            // 2. Логика ввода (Pause)
+            // 4. Input handling
             if (line.Contains("Press any key"))
                 {
-                // Используем BeginInvoke, чтобы не блокировать поток чтения
                 this.BeginInvoke((Action)( () => {
                     if (statusLabel != null) statusLabel.Text = "Finalizing...";
                 } ));
@@ -94,73 +95,134 @@ namespace ATT_Wrapper
                 return;
                 }
 
-            // 3. Очистка ANSI для логики
-            string plainLine = Regex.Replace(line, @"\x1B\[[^@-~]*[@-~]", "");
-
-            // 4. Expert View (Thread-safe update)
+            // 5. Обновляем GUI
             this.BeginInvoke((Action)( () =>
             {
-                // Фильтрация для GUI (Expert View)
+                // EXPERT VIEW: Фильтруем спам
                 if (!plainLine.Contains("INFO") && !isProgress)
                     {
-                    AppendAnsiText(rtbLog, line + Environment.NewLine);
+                    // Используем метод, который умеет и парсить ANSI, и красить по ключевым словам
+                    AppendStyledText(rtbLog, line + Environment.NewLine);
                     }
+
+                // SIMPLE VIEW: Парсим
+                _currentParser?.ParseLine(plainLine,
+                    (status, msg) => _gridController.HandleLogMessage(status, msg),
+                    (progMsg) => { if (statusLabel != null) statusLabel.Text = progMsg; }
+                );
             } ));
-
-            // 5. Simple View (Parser -> GridController)
-            _currentParser?.ParseLine(plainLine,
-                // Result Callback
-                (status, msg) => this.BeginInvoke((Action)( () => _gridController.HandleLogMessage(status, msg) )),
-                // Progress Callback
-                (progMsg) => this.BeginInvoke((Action)( () => { if (statusLabel != null) statusLabel.Text = progMsg; } ))
-            );
             }
 
-        private void AppendAnsiText(RichTextBox box, string text)
+        // --- ГЛАВНЫЙ МЕТОД РАСКРАСКИ ---
+        private void AppendStyledText(RichTextBox box, string text)
             {
-            // Упрощенный парсер цветов для RichTextBox
-            int cursor = 0;
-            var matches = Regex.Matches(text, @"\x1B\[(\d+)(;\d+)*m");
-            if (matches.Count == 0) { box.AppendText(text); return; }
+            // Regex для разделения текста по ANSI-кодам
+            // Захватываем разделитель (код), чтобы он тоже попал в массив
+            string[] parts = Regex.Split(text, @"(\x1B\[[0-9;]*m)");
 
-            foreach (Match match in matches)
+            // Текущий цвет (начинаем с дефолтного)
+            Color currentColor = _defaultColor;
+
+            foreach (string part in parts)
                 {
-                box.AppendText(text.Substring(cursor, match.Index - cursor));
-                string code = match.Groups[1].Value;
-                if (int.TryParse(code, out int c)) box.SelectionColor = GetColor(c);
-                box.SelectionStart = box.TextLength;
-                box.SelectionLength = 0;
-                cursor = match.Index + match.Length;
+                // Если это ANSI-код
+                if (part.StartsWith("\x1B["))
+                    {
+                    // Парсим код (убираем \x1B[ и m)
+                    string codeSeq = part.Substring(2, part.Length - 3);
+                    string[] codes = codeSeq.Split(';');
+
+                    foreach (var c in codes)
+                        {
+                        if (int.TryParse(c, out int codeNum))
+                            {
+                            var newColor = GetColorFromAnsi(codeNum);
+                            if (newColor.HasValue) currentColor = newColor.Value;
+                            }
+                        }
+                    }
+                // Если это текст
+                else if (!string.IsNullOrEmpty(part))
+                    {
+                    // Устанавливаем цвет перед добавлением
+                    box.SelectionStart = box.TextLength;
+                    box.SelectionLength = 0;
+
+                    // ХИТРОСТЬ: Если ANSI не поменял цвет (он дефолтный),
+                    // пробуем раскрасить по ключевым словам (PASS/FAIL)
+                    if (currentColor == _defaultColor)
+                        {
+                        Color keywordColor = GetColorFromKeywords(part);
+                        box.SelectionColor = keywordColor;
+                        }
+                    else
+                        {
+                        box.SelectionColor = currentColor;
+                        }
+
+                    box.AppendText(part);
+                    }
                 }
-            box.AppendText(text.Substring(cursor));
             }
 
-        private Color GetColor(int code)
+        // Цвета по ANSI кодам
+        private Color? GetColorFromAnsi(int code)
             {
             switch (code)
                 {
-                case 31: return Color.Salmon;
-                case 32: return Color.LightGreen;
-                case 33: return Color.Gold;
-                case 34: return Color.CornflowerBlue;
-                default: return Color.Gainsboro;
+                case 30: return Color.Gray;
+                case 31: return Color.Salmon;        // Red
+                case 32: return Color.LightGreen;    // Green
+                case 33: return Color.Gold;          // Yellow
+                case 34: return Color.CornflowerBlue;// Blue
+                case 35: return Color.Violet;        // Magenta
+                case 36: return Color.Cyan;          // Cyan
+                case 37: return Color.White;
+                case 90: return Color.DimGray;
+                case 91: return Color.Red;
+                case 92: return Color.Lime;
+                case 93: return Color.Yellow;
+                case 0: return _defaultColor;       // Reset
+                default: return null;                // Не цвет (bold и т.д.)
                 }
+            }
+
+        // Цвета по ключевым словам (Fallback)
+        private Color GetColorFromKeywords(string text)
+            {
+            string trimmed = text.TrimStart();
+            if (trimmed.StartsWith("PASS")) return Color.LightGreen;
+            if (trimmed.StartsWith("FAIL")) return Color.Salmon;
+            if (trimmed.StartsWith("SKIPPED")) return Color.Gold;
+            if (trimmed.Contains("ERROR")) return Color.Salmon;
+            if (trimmed.Contains("WARNING")) return Color.Gold;
+            return _defaultColor;
             }
 
         private void HandleExit()
             {
-            this.Invoke((Action)( () => {
+            this.BeginInvoke((Action)( () => {
                 if (statusLabel != null) statusLabel.Text = "Ready";
                 ToggleButtons(true);
             } ));
             }
 
-        // --- BUTTONS ---
+        // --- BUTTONS & HELPERS ---
+
         private void btnUpdate_Click(object sender, EventArgs e) => RunTest(new JatlasUpdateParser(), "update.bat", "");
-        private void btnCommon_Click(object sender, EventArgs e) => RunTest(new JatlasTestParser((idx, msg) => this.Invoke((Action)( () => _gridController.UpdateLastRow(msg) ))), "run-jatlas-auto.bat", "-l common --stage dev");
-        private void btnSpecial_Click(object sender, EventArgs e) => RunTest(new JatlasTestParser((idx, msg) => this.Invoke((Action)( () => _gridController.UpdateLastRow(msg) ))), "run-jatlas-auto.bat", "-l special --stage dev");
-        private void btnAging_Click(object sender, EventArgs e) => RunTest(new JatlasAgingParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
-        private void btnCommonOffline_Click(object sender, EventArgs e) => RunTest(new JatlasTestParser((idx, msg) => this.Invoke((Action)( () => _gridController.UpdateLastRow(msg) ))), "run-jatlas-auto.bat", "-l common --offline");
+
+        private void btnCommon_Click(object sender, EventArgs e)
+            => RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)), "run-jatlas-auto.bat", "-l common --stage dev");
+
+        private void btnSpecial_Click(object sender, EventArgs e)
+            => RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)), "run-jatlas-auto.bat", "-l special --stage dev");
+
+        private void btnAging_Click(object sender, EventArgs e)
+            => RunTest(new JatlasAgingParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
+
+        private void btnCommonOffline_Click(object sender, EventArgs e)
+            => RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)), "run-jatlas-auto.bat", "-l common --offline");
+
         private void taskKillBtn_Click(object sender, EventArgs e) => _executor.Kill();
 
         private void ToggleButtons(bool enabled)
@@ -168,6 +230,7 @@ namespace ATT_Wrapper
             foreach (Control c in this.Controls) EnableRecursive(c, enabled);
             if (taskKillBtn != null) taskKillBtn.Enabled = true;
             }
+
         private void EnableRecursive(Control c, bool enabled)
             {
             if (c is Button && !c.Name.Contains("Kill")) c.Enabled = enabled;

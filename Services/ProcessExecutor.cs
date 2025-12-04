@@ -30,13 +30,16 @@ namespace ATT_Wrapper.Services
                 StandardOutputEncoding = Encoding.UTF8
                 };
 
-            // Настройка окружения
+            // Настройка окружения для Python/Rich/Loguru
             var env = psi.EnvironmentVariables;
             env["JATLAS_LOG_LEVEL"] = "INFO";
             env["PYTHONUNBUFFERED"] = "1";
-            env["FORCE_COLOR"] = "1";
-            env["CLICOLOR_FORCE"] = "1";
-            env["PYTHONIOENCODING"] = "utf-8"; // Исправляет символы градусов 
+
+            // Rich color settings
+            env["FORCE_COLOR"] = "true";     // Принудительные цвета для rich
+            env["CLICOLOR_FORCE"] = "1";     // Стандарт BSD/Linux
+            env["PYTHONIOENCODING"] = "utf-8";
+            env["TERM"] = "xterm";           // Используем простой xterm, чтобы коды были стандартными (30-37)
 
             _process = new Process { StartInfo = psi, EnableRaisingEvents = true };
             _process.Exited += (s, e) => OnExited?.Invoke();
@@ -80,16 +83,16 @@ namespace ATT_Wrapper.Services
                     lineBuffer.Append(buffer, 0, bytesRead);
                     string content = lineBuffer.ToString();
 
-                    // Разделяем строки по \n или \r (чтобы ловить обновления прогресс-бара)
+                    // Разделение по \n и \r для правильной обработки прогресса
                     int splitIndex;
                     char[] separators = { '\n', '\r' };
 
                     while (( splitIndex = content.IndexOfAny(separators) ) >= 0)
                         {
                         string line = content.Substring(0, splitIndex).Trim();
+                        // Фильтруем пустые строки, если нужно, или передаем как есть
                         if (!string.IsNullOrEmpty(line)) OnOutputReceived?.Invoke(line);
 
-                        // Пропускаем сам разделитель и возможный парный символ (\r\n)
                         int nextCharIdx = splitIndex + 1;
                         if (nextCharIdx < content.Length &&
                             ( ( content[splitIndex] == '\r' && content[nextCharIdx] == '\n' ) ||
@@ -103,7 +106,6 @@ namespace ATT_Wrapper.Services
                     lineBuffer.Clear();
                     lineBuffer.Append(content);
 
-                    // Ловим "висящий" запрос ввода
                     if (content.Contains("Press any key to continue"))
                         {
                         OnOutputReceived?.Invoke(content.Trim());
