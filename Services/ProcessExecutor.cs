@@ -3,12 +3,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using Serilog;
 
 namespace ATT_Wrapper.Services
     {
     public class ProcessExecutor
         {
+        // Событие теперь передает сырой кусок текста, а не полную строку
         public event Action<string> OnOutputReceived;
         public event Action OnExited;
         public int CurrentPid => _process?.Id ?? -1;
@@ -17,6 +17,8 @@ namespace ATT_Wrapper.Services
 
         public void Start(string scriptPath, string arguments)
             {
+            GeminiLogger.Log($"Executor Start: {scriptPath} {arguments}");
+
             if (_process != null && !_process.HasExited)
                 throw new InvalidOperationException("Process is already running.");
 
@@ -27,36 +29,50 @@ namespace ATT_Wrapper.Services
                 RedirectStandardInput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.UTF8
+                StandardOutputEncoding = Encoding.UTF8, // Важно для корректных символов
+                StandardErrorEncoding = Encoding.UTF8
                 };
 
-            // Environment settings for Rich/Loguru
+            // === [FIX] Переменные для обмана Rich и Python ===
             var env = psi.EnvironmentVariables;
+            env["PYTHONUNBUFFERED"] = "1"; // Мгновенный вывод (самое важное!)
+            env["FORCE_COLOR"] = "1";      // Заставляет Rich слать цвета
+            env["CLICOLOR_FORCE"] = "1";   // Доп. флаг для других либ
             env["JATLAS_LOG_LEVEL"] = "INFO";
-            env["PYTHONUNBUFFERED"] = "1";
-            env["FORCE_COLOR"] = "1";
-            env["CLICOLOR_FORCE"] = "1";
-            env["PYTHONIOENCODING"] = "utf-8";
-            env["TERM"] = "xterm-256color"; // Try 256 color again, standard for modern libs
-
-            // Prevent line wrapping
-            env["COLUMNS"] = "250";
-            env["WIDTH"] = "250";   // Some libs check this
+            env["TERM"] = "xterm-256color";
+            env["COLUMNS"] = "120";        // Ширина виртуальной консоли
+            // =================================================
 
             _process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            _process.Exited += (s, e) => OnExited?.Invoke();
+            _process.Exited += (s, e) => {
+                GeminiLogger.Log($"Process {_process?.Id} exited");
+                OnExited?.Invoke();
+            };
 
-            _process.Start();
-            Log.Information($"Started process PID: {_process.Id}");
+            try
+                {
+                _process.Start();
+                GeminiLogger.Log($"Started Standard Process PID: {_process.Id}");
+                }
+            catch (Exception ex)
+                {
+                GeminiLogger.Error(ex, "Failed to start standard process");
+                throw;
+                }
 
-            Task.Run(() => ReadStreamAsync(_process.StandardOutput));
-            Task.Run(() => ReadStreamAsync(_process.StandardError));
+            // Читаем потоки асинхронно
+            Task.Run(() => ReadStreamAsync(_process.StandardOutput, "STDOUT"));
+            Task.Run(() => ReadStreamAsync(_process.StandardError, "STDERR"));
             }
 
         public void SendInput(string input)
             {
-            try { _process?.StandardInput.WriteLine(input); }
-            catch (Exception ex) { Log.Warning(ex, "Failed to send input"); }
+            try
+                {
+                _process?.StandardInput.WriteLine(input);
+                GeminiLogger.Debug($"Sent input: {input}");
+                }
+            catch (Exception ex) { GeminiLogger.Error(ex, "Failed to send input"); }
             }
 
         public void Kill()
@@ -64,58 +80,39 @@ namespace ATT_Wrapper.Services
             if (_process == null || _process.HasExited) return;
             try
                 {
+                GeminiLogger.Log($"Killing process PID: {_process.Id}");
                 Process.Start(new ProcessStartInfo("taskkill", $"/F /T /PID {_process.Id}")
                     { CreateNoWindow = true, UseShellExecute = false });
                 }
-            catch (Exception ex) { Log.Error(ex, "Kill failed"); }
+            catch (Exception ex) { GeminiLogger.Error(ex, "Kill failed"); }
             }
 
-        private async Task ReadStreamAsync(StreamReader reader)
+        private async Task ReadStreamAsync(StreamReader reader, string streamName)
             {
-            char[] buffer = new char[1024];
-            StringBuilder lineBuffer = new StringBuilder();
+            // Буфер на 4Кб
+            char[] buffer = new char[4096];
 
             try
                 {
                 while (_process != null && !_process.HasExited)
                     {
+                    // Читаем блок данных (не ждем перевода строки!)
                     int bytesRead = await reader.ReadAsync(buffer, 0, buffer.Length);
                     if (bytesRead == 0) break;
 
-                    lineBuffer.Append(buffer, 0, bytesRead);
-                    string content = lineBuffer.ToString();
+                    string content = new string(buffer, 0, bytesRead);
 
-                    int splitIndex;
-                    char[] separators = { '\n', '\r' };
+                    // Логируем сырой чанк (можно отключить, если слишком много логов)
+                    // GeminiLogger.LogRawData($"{streamName} Chunk", content);
 
-                    while (( splitIndex = content.IndexOfAny(separators) ) >= 0)
-                        {
-                        string line = content.Substring(0, splitIndex).TrimEnd(); // TrimEnd to keep indentation if any
-
-                        // Pass through non-empty lines
-                        if (line.Length > 0) OnOutputReceived?.Invoke(line);
-
-                        int nextCharIdx = splitIndex + 1;
-                        if (nextCharIdx < content.Length &&
-                            ( ( content[splitIndex] == '\r' && content[nextCharIdx] == '\n' ) ||
-                             ( content[splitIndex] == '\n' && content[nextCharIdx] == '\r' ) ))
-                            {
-                            nextCharIdx++;
-                            }
-                        content = content.Substring(nextCharIdx);
-                        }
-
-                    lineBuffer.Clear();
-                    lineBuffer.Append(content);
-
-                    if (content.Contains("Press any key to continue"))
-                        {
-                        OnOutputReceived?.Invoke(content.Trim());
-                        lineBuffer.Clear();
-                        }
+                    // Передаем данные сразу же
+                    OnOutputReceived?.Invoke(content);
                     }
                 }
-            catch (Exception ex) { Log.Debug($"Stream read ended: {ex.Message}"); }
+            catch (Exception ex)
+                {
+                GeminiLogger.Error(ex, $"Stream read error ({streamName})");
+                }
             }
         }
     }

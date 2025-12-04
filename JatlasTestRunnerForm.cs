@@ -14,30 +14,37 @@ namespace ATT_Wrapper
         {
         private const string SCRIPT_PATH = @"C:\jatlas\scripts\win_scripts\";
 
+        // Возвращаемся к стандартному экзекутору
         private readonly ProcessExecutor _executor;
+
         private readonly ResultsGridController _gridController;
         private readonly MappingManager _mapper;
-
-        // Обработчик вывода (логика парсинга цветов и текста переехала сюда)
         private ConsoleOutputHandler _outputHandler;
-
-        // Тот же regex для очистки debug вывода
-        private const string AnsiRegex = @"\x1B\[[0-9;?]*[ -/]*[@-~]";
 
         public JatlasTestRunnerForm()
             {
+            GeminiLogger.Initialize();
             InitializeComponent();
             SetupLogging();
 
+            GeminiLogger.Log("Initializing Main Form (Standard Process Mode)...");
+
             _executor = new ProcessExecutor();
+
             string mappingPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mappings.json");
             _mapper = new MappingManager(mappingPath);
             _gridController = new ResultsGridController(dgvResults, _mapper);
 
-            _executor.OnOutputReceived += HandleOutput;
+            // --- Подписки ---
+
+            // Получаем сырые данные от процесса и передаем в Handler
+            _executor.OnOutputReceived += HandleRawOutput;
+
             _executor.OnExited += HandleExit;
+            // ----------------
 
             ThemeManager.Apply(this, dgvResults, rtbLog);
+            GeminiLogger.Log("Initialization complete.");
             }
 
         private void SetupLogging()
@@ -49,23 +56,23 @@ namespace ATT_Wrapper
             Log.Information("=== App Started ===");
             }
 
-        // --- RUN LOGIC ---
-
         private void RunTest(ILogParser parser, string script, string args)
             {
+            GeminiLogger.Log($"RunTest requested: {script} {args}");
+
             ToggleButtons(false);
             _gridController.Clear();
             rtbLog.Clear();
             rtbLog.ForeColor = Color.Gainsboro;
 
-            if (statusLabel != null) statusLabel.Text = "Initializing...";
+            if (statusLabel != null) statusLabel.Text = "Running...";
 
-            // Создаем хендлер для текущего запуска
+            // Создаем Handler для отрисовки
             _outputHandler = new ConsoleOutputHandler(
                 parser,
                 _gridController,
                 (status) => this.BeginInvoke((Action)( () => { if (statusLabel != null) statusLabel.Text = status; } )),
-                () => _executor.SendInput("")
+                () => _executor.SendInput("") // Для "Press any key"
             );
 
             try
@@ -75,47 +82,42 @@ namespace ATT_Wrapper
                 }
             catch (Exception ex)
                 {
-                Log.Error(ex, "Start failed");
+                GeminiLogger.Error(ex, "Start failed");
                 MessageBox.Show($"Error: {ex.Message}");
                 ToggleButtons(true);
                 }
             }
 
-        private void HandleOutput(string line)
+        private void HandleRawOutput(string rawData)
             {
             if (this.IsDisposed || !this.IsHandleCreated) return;
 
-            // 1. Вывод в Debug (Output окно VS) - чистый текст без шума
-            string plainLine = Regex.Replace(line, AnsiRegex, "");
-            bool isProgress = plainLine.TrimStart().StartsWith("Running task:", StringComparison.OrdinalIgnoreCase);
-            bool isInfo = plainLine.Contains("INFO");
+            // Логируем, что реально пришло
+            // GeminiLogger.LogRawData("Executor -> Form", rawData);
 
-            if (!isProgress && !isInfo && !string.IsNullOrWhiteSpace(plainLine))
-                {
-                Debug.WriteLine($"[RAW] {plainLine}");
-                }
-
-            // 2. Обработка логики (GUI, Parsing)
             this.BeginInvoke((Action)( () =>
             {
-                _outputHandler?.ProcessLine(line, rtbLog);
+                // Передаем в OutputHandler (он сам рисует цвета и собирает строки)
+                _outputHandler?.ProcessRawData(rawData, rtbLog);
             } ));
             }
 
         private void HandleExit()
             {
+            GeminiLogger.Log("HandleExit called");
             this.BeginInvoke((Action)( () => {
                 if (statusLabel != null) statusLabel.Text = "Ready";
                 ToggleButtons(true);
             } ));
             }
 
-        // --- BUTTONS ---
+        // --- Кнопки ---
         private void btnUpdate_Click(object sender, EventArgs e) => RunTest(new JatlasUpdateParser(), "update.bat", "");
         private void btnCommon_Click(object sender, EventArgs e) => RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)), "run-jatlas-auto.bat", "-l common --stage dev");
         private void btnSpecial_Click(object sender, EventArgs e) => RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)), "run-jatlas-auto.bat", "-l special --stage dev");
         private void btnAging_Click(object sender, EventArgs e) => RunTest(new JatlasAgingParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
         private void btnCommonOffline_Click(object sender, EventArgs e) => RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)), "run-jatlas-auto.bat", "-l common --offline");
+
         private void taskKillBtn_Click(object sender, EventArgs e) => _executor.Kill();
 
         private void ToggleButtons(bool enabled)
@@ -123,6 +125,7 @@ namespace ATT_Wrapper
             foreach (Control c in this.Controls) EnableRecursive(c, enabled);
             if (taskKillBtn != null) taskKillBtn.Enabled = true;
             }
+
         private void EnableRecursive(Control c, bool enabled)
             {
             if (c is Button && !c.Name.Contains("Kill")) c.Enabled = enabled;
@@ -132,6 +135,7 @@ namespace ATT_Wrapper
         protected override void OnFormClosing(FormClosingEventArgs e)
             {
             _executor.Kill();
+            GeminiLogger.Close();
             Log.CloseAndFlush();
             base.OnFormClosing(e);
             }
