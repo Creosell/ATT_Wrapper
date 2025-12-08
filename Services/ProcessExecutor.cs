@@ -1,670 +1,480 @@
 ﻿using System;
-using System.Collections;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
-using Serilog;
 
 namespace ATT_Wrapper.Services
     {
-    public class ProcessExecutor : IDisposable
+    /// <summary>
+    /// Основной класс для управления headless-терминалом.
+    /// Объединяет логику HeadlessRunner, ProcessFactory и управления пайпами.
+    /// </summary>
+    public sealed class ProcessExecutor : IDisposable
         {
-        public event Action<string> OnOutputReceived;
-        public event Action OnExited;
-        public int CurrentPid => (int)_pi.dwProcessId;
-
-        private IntPtr _hPc = IntPtr.Zero;
-        private IntPtr _inputWriteHandle = IntPtr.Zero;
-        private IntPtr _outputReadHandle = IntPtr.Zero;
-        private SafeFileHandle _inputWriteSafeHandle = null;
-        private SafeFileHandle _outputReadSafeHandle = null;
+        private PseudoConsolePipe _inputPipe;
+        private PseudoConsolePipe _outputPipe;
+        private PseudoConsole _pseudoConsole;
+        private Process _process;
         private StreamWriter _inputWriter;
-        private bool _disposed = false;
-        private PROCESS_INFORMATION _pi;
+        private Task _outputTask;
+        private Task _exitWaitTask;
+        private CancellationTokenSource _cancellationTokenSource;
 
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct COORD
+        // События
+        public event Action<string> OnOutputReceived;
+        public event EventHandler OnExited;
+
+        public ProcessExecutor()
             {
-            public short X;
-            public short Y;
+            _cancellationTokenSource = new CancellationTokenSource();
             }
 
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct PROCESS_INFORMATION
+        /// <summary>
+        /// Запускает указанную команду в псевдоконсоли.
+        /// </summary>
+        public void Start(string command)
             {
-            public IntPtr hProcess;
-            public IntPtr hThread;
-            public uint dwProcessId;
-            public uint dwThreadId;
-            }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        internal struct STARTUPINFOEX
-            {
-            public STARTUPINFO StartupInfo;
-            public IntPtr lpAttributeList;
-            }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        internal struct STARTUPINFO
-            {
-            public uint cb;
-            public IntPtr lpReserved;
-            public IntPtr lpDesktop;
-            public IntPtr lpTitle;
-            public uint dwX;
-            public uint dwY;
-            public uint dwXSize;
-            public uint dwYSize;
-            public uint dwXCountChars;
-            public uint dwYCountChars;
-            public uint dwFillAttribute;
-            public uint dwFlags;
-            public short wShowWindow;
-            public short cbReserved2;
-            public IntPtr lpReserved2;
-            public IntPtr hStdInput;
-            public IntPtr hStdOutput;
-            public IntPtr hStdError;
-            }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct SECURITY_ATTRIBUTES
-            {
-            public int nLength;
-            public IntPtr lpSecurityDescriptor;
-            public bool bInheritHandle;
-            }
-
-        // CRITICAL FIX: Correct constant value for PseudoConsole attribute
-        private const uint PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016;
-        private const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
-        private const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
-        private const uint CREATE_NO_WINDOW = 0x08000000;
-        private const uint INFINITE = 0xFFFFFFFF;
-        private const int ERROR_INSUFFICIENT_BUFFER = 122;
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern int CreatePseudoConsole(COORD size, IntPtr hInput, IntPtr hOutput, uint dwFlags, out IntPtr phPC);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool CreatePipe(out IntPtr hReadPipe, out IntPtr hWritePipe, ref SECURITY_ATTRIBUTES lpPipeAttributes, uint nSize);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool InitializeProcThreadAttributeList(IntPtr lpAttributeList, uint dwAttributeCount, uint dwFlags, ref IntPtr lpSize);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool UpdateProcThreadAttribute(IntPtr lpAttributeList, uint dwFlags, IntPtr Attribute, IntPtr lpValue, IntPtr cbSize, IntPtr lpPreviousValue, IntPtr lpReturnSize);
-
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool CreateProcessW(
-            string lpApplicationName,
-            StringBuilder lpCommandLine,  // Must be StringBuilder for modification
-            IntPtr lpProcessAttributes,
-            IntPtr lpThreadAttributes,
-            bool bInheritHandles,
-            uint dwCreationFlags,
-            IntPtr lpEnvironment,
-            string lpCurrentDirectory,
-            ref STARTUPINFOEX lpStartupInfo,
-            out PROCESS_INFORMATION lpProcessInformation);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern void ClosePseudoConsole(IntPtr hPC);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool DeleteProcThreadAttributeList(IntPtr lpAttributeList);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool CloseHandle(IntPtr hObject);
-
-        [DllImport("kernel32.dll")]
-        private static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
-
-        public void Start(string scriptPath, string arguments)
-            {
-            if (_hPc != IntPtr.Zero)
+            if (_process != null)
                 throw new InvalidOperationException("Process is already running.");
 
-            var executionDir = Path.GetDirectoryName(scriptPath);
+            // 1. Создаем пайпы
+            _inputPipe = new PseudoConsolePipe();
+            _outputPipe = new PseudoConsolePipe();
 
-            IntPtr inputReadPipe = IntPtr.Zero;
-            IntPtr inputWritePipe = IntPtr.Zero;
-            IntPtr outputReadPipe = IntPtr.Zero;
-            IntPtr outputWritePipe = IntPtr.Zero;
-            IntPtr attributeList = IntPtr.Zero;
-            IntPtr hPcValue = IntPtr.Zero;
-            IntPtr envPtr = IntPtr.Zero;
+            // 2. Создаем псевдоконсоль (размер 80x25, как в оригинальном HeadlessRunner)
+            _pseudoConsole = PseudoConsole.Create(_inputPipe.ReadSide, _outputPipe.WriteSide, 80, 25);
 
-            try
-                {
-                // Security attributes for pipes
-                SECURITY_ATTRIBUTES sa = new SECURITY_ATTRIBUTES
-                    {
-                    nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>(),
-                    bInheritHandle = true,
-                    lpSecurityDescriptor = IntPtr.Zero
-                    };
+            // 3. Запускаем процесс
+            _process = ProcessFactory.Start(command, PseudoConsole.PseudoConsoleThreadAttribute, _pseudoConsole.Handle);
 
-                // Create pipes for input and output
-                if (!CreatePipe(out inputReadPipe, out inputWritePipe, ref sa, 0))
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to create input pipe.");
+            // 4. Настраиваем отправку ввода (SendInput)
+            // Создаем StreamWriter для записи в _inputPipe.WriteSide
+            var fsInput = new FileStream(_inputPipe.WriteSide, FileAccess.Write);
+            _inputWriter = new StreamWriter(fsInput, Encoding.UTF8) { AutoFlush = true };
 
-                if (!CreatePipe(out outputReadPipe, out outputWritePipe, ref sa, 0))
-                    {
-                    CloseHandle(inputReadPipe);
-                    CloseHandle(inputWritePipe);
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to create output pipe.");
-                    }
+            // 5. Запускаем чтение вывода (OnOutputReceived)
+            _outputTask = Task.Run(() => ReadOutputLoop(_outputPipe.ReadSide, _cancellationTokenSource.Token));
 
-                // Store handles (we'll manage cleanup ourselves)
-                _inputWriteHandle = inputWritePipe;
-                _outputReadHandle = outputReadPipe;
-
-                // Create pseudo console
-                COORD consoleSize = new COORD { X = 250, Y = 9999 };
-                int hresult = CreatePseudoConsole(consoleSize, inputReadPipe, outputWritePipe, 0, out _hPc);
-
-                if (hresult != 0 || _hPc == IntPtr.Zero)
-                    {
-                    throw new Win32Exception(hresult, $"Failed to create pseudo console. HRESULT: 0x{hresult:X}");
-                    }
-
-                Log.Information($"Created pseudo console handle: 0x{_hPc.ToInt64():X}");
-
-                // Close the pipe ends that the pseudoconsole now owns
-                CloseHandle(inputReadPipe);
-                inputReadPipe = IntPtr.Zero;
-                CloseHandle(outputWritePipe);
-                outputWritePipe = IntPtr.Zero;
-
-                // Prepare startup info with attribute list
-                IntPtr requiredSize = IntPtr.Zero;
-
-                // Get required size for attribute list
-                if (!InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref requiredSize))
-                    {
-                    int error = Marshal.GetLastWin32Error();
-                    if (error != ERROR_INSUFFICIENT_BUFFER)
-                        throw new Win32Exception(error, "Failed to get attribute list size");
-                    }
-
-                // Allocate and initialize attribute list
-                attributeList = Marshal.AllocHGlobal(requiredSize);
-
-                if (!InitializeProcThreadAttributeList(attributeList, 1, 0, ref requiredSize))
-                    {
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to initialize attribute list");
-                    }
-
-                // Allocate memory for the pseudoconsole handle and write it
-                hPcValue = Marshal.AllocHGlobal(IntPtr.Size);
-                Marshal.WriteIntPtr(hPcValue, _hPc);
-
-                // Update the attribute list with the pseudoconsole handle
-                if (!UpdateProcThreadAttribute(
-                    attributeList,
-                    0,
-                    (IntPtr)PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
-                    hPcValue,
-                    (IntPtr)IntPtr.Size,
-                    IntPtr.Zero,
-                    IntPtr.Zero))
-                    {
-                    int error = Marshal.GetLastWin32Error();
-                    throw new Win32Exception(error, $"Failed to update thread attribute. Error code: {error}");
-                    }
-
-                // Setup startup info
-                STARTUPINFOEX siEx = new STARTUPINFOEX();
-                siEx.StartupInfo.cb = (uint)Marshal.SizeOf<STARTUPINFOEX>();
-                siEx.StartupInfo.dwFlags = 0;
-                siEx.StartupInfo.wShowWindow = 0;
-                siEx.StartupInfo.lpReserved = IntPtr.Zero;
-                siEx.StartupInfo.lpDesktop = IntPtr.Zero;
-                siEx.StartupInfo.lpTitle = IntPtr.Zero;
-                siEx.StartupInfo.lpReserved2 = IntPtr.Zero;
-                siEx.StartupInfo.cbReserved2 = 0;
-                siEx.StartupInfo.hStdInput = IntPtr.Zero;
-                siEx.StartupInfo.hStdOutput = IntPtr.Zero;
-                siEx.StartupInfo.hStdError = IntPtr.Zero;
-                siEx.lpAttributeList = attributeList;
-
-                Log.Information($"STARTUPINFOEX size: {siEx.StartupInfo.cb}, AttributeList: 0x{attributeList.ToInt64():X}");
-
-                // Build environment block
-                var psi = new ProcessStartInfo();
-                SetEnvironmentVariables(psi);
-
-                StringBuilder envBlock = new StringBuilder();
-                foreach (DictionaryEntry entry in psi.EnvironmentVariables)
-                    {
-                    envBlock.Append($"{entry.Key}={entry.Value}\0");
-                    }
-                envBlock.Append("\0");
-                envPtr = Marshal.StringToHGlobalUni(envBlock.ToString());
-
-                // CRITICAL FIX: Command line must be mutable for CreateProcessW
-                // Try running batch file directly (Windows will invoke cmd.exe automatically)
-                StringBuilder commandLineBuilder = new StringBuilder(32768);
-
-                // Try direct batch execution first
-                if (scriptPath.EndsWith(".bat", StringComparison.OrdinalIgnoreCase) ||
-                    scriptPath.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase))
-                    {
-                    // For batch files, we need cmd.exe but WITHOUT /c to keep console alive
-                    // Use /k to keep cmd.exe running
-                    if (!string.IsNullOrEmpty(arguments))
-                        {
-                        commandLineBuilder.Append($"cmd.exe /k \"{scriptPath}\" {arguments} & exit");
-                        }
-                    else
-                        {
-                        commandLineBuilder.Append($"cmd.exe /k \"{scriptPath}\" & exit");
-                        }
-                    Log.Information("Using cmd.exe /k with auto-exit");
-                    }
-                else
-                    {
-                    // For executables, run directly
-                    if (!string.IsNullOrEmpty(arguments))
-                        {
-                        commandLineBuilder.Append($"\"{scriptPath}\" {arguments}");
-                        }
-                    else
-                        {
-                        commandLineBuilder.Append($"\"{scriptPath}\"");
-                        }
-                    }
-
-                Log.Information($"Application: {( scriptPath.EndsWith(".bat") || scriptPath.EndsWith(".cmd") ? "cmd.exe" : scriptPath )}");
-                Log.Information($"Command line: {commandLineBuilder}");
-                Log.Information($"Working directory: {executionDir ?? Environment.CurrentDirectory}");
-
-                // CRITICAL FIX: Set bInheritHandles to FALSE (the pseudoconsole handles inheritance)
-                // Must combine EXTENDED_STARTUPINFO_PRESENT with CREATE_UNICODE_ENVIRONMENT
-                // Add CREATE_NO_WINDOW to hide the console window
-                if (!CreateProcessW(
-                    null,  // Let the system find cmd.exe
-                    commandLineBuilder,  // Pass StringBuilder directly
-                    IntPtr.Zero,
-                    IntPtr.Zero,
-                    false,  // bInheritHandles = false for pseudoconsole
-                    EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW,
-                    envPtr,
-                    executionDir ?? Environment.CurrentDirectory,
-                    ref siEx,
-                    out PROCESS_INFORMATION pi))
-                    {
-                    int error = Marshal.GetLastWin32Error();
-                    throw new Win32Exception(error, $"Failed to create process. Error code: {error}");
-                    }
-
-                _pi = pi;
-
-                Log.Information($"Started process PID: {pi.dwProcessId}");
-
-                // NOW close the pipe ends owned by pseudoconsole (after process is created)
-                CloseHandle(inputReadPipe);
-                CloseHandle(outputWritePipe);
-                Log.Information("Closed pseudoconsole-owned pipe ends");
-
-                Log.Information($"Input write handle: 0x{_inputWriteHandle.ToInt64():X}");
-                Log.Information($"Output read handle: 0x{_outputReadHandle.ToInt64():X}");
-
-                // Setup input writer using SafeFileHandle
-                _inputWriteSafeHandle = new SafeFileHandle(_inputWriteHandle, ownsHandle: true);
-                var inputStream = new FileStream(_inputWriteSafeHandle, FileAccess.Write, 4096, isAsync: false);
-                _inputWriter = new StreamWriter(inputStream, Encoding.UTF8) { AutoFlush = true };
-                Log.Information("Input writer created");
-
-                // Setup output reader using SafeFileHandle - read as raw bytes to preserve ANSI codes
-                _outputReadSafeHandle = new SafeFileHandle(_outputReadHandle, ownsHandle: true);
-                var outputStream = new FileStream(_outputReadSafeHandle, FileAccess.Read, 4096, isAsync: false);
-                Log.Information("Output stream created (synchronous mode)");
-
-                // Test: Send a newline to trigger any initial output
-                try
-                    {
-                    _inputWriter.WriteLine();
-                    Log.Information("Sent initial newline to process");
-                    }
-                catch (Exception ex)
-                    {
-                    Log.Warning(ex, "Failed to send initial newline");
-                    }
-
-                // Start reading raw output (preserves all ANSI escape codes)
-                Log.Information("Starting output reader task");
-                var readTask = Task.Run(() => ReadRawStreamAsync(outputStream));
-                Log.Information($"Read task created, ID: {readTask.Id}, Status: {readTask.Status}");
-
-                // Watch for process exit
-                Task.Run(() =>
-                {
-                    WaitForSingleObject(pi.hProcess, INFINITE);
-                    OnExited?.Invoke();
-                    CloseHandle(pi.hProcess);
-                    CloseHandle(pi.hThread);
-                });
-                }
-            catch
-                {
-                // Cleanup on error - close any open handles
-                if (inputReadPipe != IntPtr.Zero) CloseHandle(inputReadPipe);
-                if (inputWritePipe != IntPtr.Zero) CloseHandle(inputWritePipe);
-                if (outputReadPipe != IntPtr.Zero) CloseHandle(outputReadPipe);
-                if (outputWritePipe != IntPtr.Zero) CloseHandle(outputWritePipe);
-
-                if (_hPc != IntPtr.Zero)
-                    {
-                    ClosePseudoConsole(_hPc);
-                    _hPc = IntPtr.Zero;
-                    }
-
-                _inputWriteHandle = IntPtr.Zero;
-                _outputReadHandle = IntPtr.Zero;
-
-                throw;
-                }
-            finally
-                {
-                // Always cleanup temporary resources
-                if (attributeList != IntPtr.Zero)
-                    {
-                    DeleteProcThreadAttributeList(attributeList);
-                    Marshal.FreeHGlobal(attributeList);
-                    }
-                if (hPcValue != IntPtr.Zero)
-                    {
-                    Marshal.FreeHGlobal(hPcValue);
-                    }
-                if (envPtr != IntPtr.Zero)
-                    {
-                    Marshal.FreeHGlobal(envPtr);
-                    }
-                }
+            // 6. Запускаем ожидание завершения процесса (OnExited)
+            _exitWaitTask = Task.Run(() => WaitForExitLoop(_process));
             }
 
-        private void SetEnvironmentVariables(ProcessStartInfo psi)
-            {
-            psi.EnvironmentVariables["JATLAS_LOG_LEVEL"] = "INFO";
-            psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
-            psi.EnvironmentVariables["FORCE_COLOR"] = "1";
-            psi.EnvironmentVariables["CLICOLOR_FORCE"] = "1";
-            psi.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
-            psi.EnvironmentVariables["TERM"] = "xterm-256color";
-            psi.EnvironmentVariables["NO_COLOR"] = "0";
-            psi.EnvironmentVariables["COLUMNS"] = "250";
-            psi.EnvironmentVariables["WIDTH"] = "250";
-            }
-
+        /// <summary>
+        /// Отправляет текст в стандартный ввод терминала.
+        /// </summary>
         public void SendInput(string input)
             {
+            if (_inputWriter == null) return;
             try
                 {
-                _inputWriter?.WriteLine(input);
+                _inputWriter.Write(input);
                 }
             catch (Exception ex)
                 {
-                Log.Warning(ex, "Failed to send input");
+                // Игнорируем ошибки записи, если процесс уже умер
+                System.Diagnostics.Debug.WriteLine($"[SendInput Error] {ex.Message}");
                 }
             }
 
+        /// <summary>
+        /// Принудительно завершает процесс.
+        /// </summary>
         public void Kill()
             {
-            if (_pi.dwProcessId == 0) return;
+            // В оригинальном API не было TerminateProcess, но закрытие псевдоконсоли (Dispose)
+            // убивает прикрепленный к ней процесс.
+            Dispose();
+            }
 
-            try
+        private void ReadOutputLoop(SafeFileHandle outputReadSide, CancellationToken token)
+            {
+            using (var fs = new FileStream(outputReadSide, FileAccess.Read))
+            using (var reader = new StreamReader(fs, Encoding.UTF8))
                 {
-                Process.Start(new ProcessStartInfo("taskkill", $"/F /T /PID {CurrentPid}")
+                try
                     {
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                    });
-                }
-            catch (Exception ex)
-                {
-                Log.Error(ex, "Kill failed");
+                    char[] buffer = new char[1024];
+                    while (!token.IsCancellationRequested)
+                        {
+                        // Читаем синхронно
+                        int bytesRead = reader.Read(buffer, 0, buffer.Length);
+
+                        // Если 0 - значит пайп закрыт
+                        if (bytesRead == 0) break;
+
+                        string data = new string(buffer, 0, bytesRead);
+                        OnOutputReceived?.Invoke(data);
+                        }
+                    }
+                catch (IOException) { /* Pipe broken */ }
+                catch (ObjectDisposedException) { /* Stream closed */ }
+                catch (Exception ex)
+                    {
+                    System.Diagnostics.Debug.WriteLine($"[ReadOutput Error] {ex.Message}");
+                    }
                 }
             }
 
-        private async Task ReadRawStreamAsync(FileStream stream)
+        private void WaitForExitLoop(Process process)
             {
-            byte[] buffer = new byte[4096];
-            StringBuilder lineBuffer = new StringBuilder();
-
-            Log.Information("ReadRawStreamAsync started");
-            Log.Information($"Stream CanRead: {stream.CanRead}");
-            Log.Information($"Stream Handle: 0x{stream.SafeFileHandle.DangerousGetHandle().ToInt64():X}");
-
-            try
+            // Ждем завершения процесса
+            using (var waitHandle = new AutoResetEvent(false)
                 {
-                int readAttempts = 0;
-                while (true)
-                    {
-                    readAttempts++;
-                    Log.Debug($"Attempting to read (attempt #{readAttempts})...");
-
-                    // Use synchronous Read with timeout check
-                    var readTask = Task.Run(() =>
-                    {
-                        Log.Debug($"Read thread started, ThreadId: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
-                        try
-                            {
-                            int result = stream.Read(buffer, 0, buffer.Length);
-                            Log.Debug($"Read returned: {result} bytes");
-                            return result;
-                            }
-                        catch (Exception ex)
-                            {
-                            Log.Error(ex, "Exception in Read");
-                            throw;
-                            }
-                    });
-
-                    // Wait for read with timeout to detect blocking
-                    if (await Task.WhenAny(readTask, Task.Delay(5000)) == readTask)
-                        {
-                        int bytesRead = await readTask;
-                        Log.Information($"Read completed: {bytesRead} bytes (attempt #{readAttempts})");
-
-                        if (bytesRead == 0)
-                            {
-                            Log.Information("Stream ended (0 bytes read)");
-                            break;
-                            }
-
-                        // Convert bytes to string preserving ANSI codes
-                        string content = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Log.Debug($"Converted to string: {content.Length} chars");
-
-                        // Log raw bytes
-                        StringBuilder hexDump = new StringBuilder();
-                        for (int i = 0; i < Math.Min(bytesRead, 100); i++)
-                            {
-                            hexDump.Append($"{buffer[i]:X2} ");
-                            }
-                        Log.Debug($"First bytes (hex): {hexDump}");
-
-                        // Log first 200 chars of raw content
-                        string preview = content.Length > 200 ? content.Substring(0, 200) + "..." : content;
-                        Log.Information($"Content preview: {preview}");
-
-                        lineBuffer.Append(content);
-
-                        // Process line by line, but keep ANSI codes intact
-                        string accumulated = lineBuffer.ToString();
-                        int splitIndex;
-                        char[] separators = { '\n', '\r' };
-
-                        while (( splitIndex = accumulated.IndexOfAny(separators) ) >= 0)
-                            {
-                            string line = accumulated.Substring(0, splitIndex);
-
-                            if (line.Length > 0)
-                                {
-                                Log.Debug($"Invoking OnOutputReceived with line ({line.Length} chars): {( line.Length > 100 ? line.Substring(0, 100) + "..." : line )}");
-                                OnOutputReceived?.Invoke(line);
-                                }
-
-                            int nextCharIdx = splitIndex + 1;
-                            if (nextCharIdx < accumulated.Length &&
-                                ( ( accumulated[splitIndex] == '\r' && accumulated[nextCharIdx] == '\n' ) ||
-                                 ( accumulated[splitIndex] == '\n' && accumulated[nextCharIdx] == '\r' ) ))
-                                {
-                                nextCharIdx++;
-                                }
-                            accumulated = accumulated.Substring(nextCharIdx);
-                            }
-
-                        lineBuffer.Clear();
-                        lineBuffer.Append(accumulated);
-                        }
-                    else
-                        {
-                        // Timeout - read is blocking
-                        Log.Warning($"Read is blocking (waited 5 seconds on attempt #{readAttempts})");
-                        Log.Warning("This suggests the process isn't producing any output to the pseudoconsole");
-
-                        // Check if process is still running
-                        if (_pi.hProcess != IntPtr.Zero)
-                            {
-                            uint exitCode;
-                            if (GetExitCodeProcess(_pi.hProcess, out exitCode))
-                                {
-                                if (exitCode == 259) // STILL_ACTIVE
-                                    {
-                                    Log.Warning("Process is still running but not producing output");
-                                    }
-                                else
-                                    {
-                                    Log.Warning($"Process has exited with code: {exitCode}");
-                                    }
-                                }
-                            }
-
-                        // Continue waiting (don't break, let it keep trying)
-                        }
-                    }
-
-                // Output any remaining content
-                if (lineBuffer.Length > 0)
-                    {
-                    Log.Debug($"Final output ({lineBuffer.Length} chars): {( lineBuffer.Length > 100 ? lineBuffer.ToString().Substring(0, 100) + "..." : lineBuffer.ToString() )}");
-                    OnOutputReceived?.Invoke(lineBuffer.ToString());
-                    }
-
-                Log.Information("ReadRawStreamAsync completed normally");
+                SafeWaitHandle = new SafeWaitHandle(process.ProcessInfo.hProcess, ownsHandle: false)
+                })
+                {
+                waitHandle.WaitOne();
                 }
-            catch (Exception ex)
+
+            OnExited?.Invoke(this, EventArgs.Empty);
+
+            // После завершения процесса очищаем ресурсы (но не полностью Dispose, чтобы можно было прочитать остатки логов)
+            }
+
+        public void Dispose()
+            {
+            _cancellationTokenSource?.Cancel();
+
+            // Закрываем writer ввода
+            _inputWriter?.Dispose();
+            _inputWriter = null;
+
+            // Освобождаем процесс (это закроет хендлы процесса)
+            _process?.Dispose();
+            _process = null;
+
+            // Освобождаем псевдоконсоль (это убьет ConHost и cmd.exe, если они еще живы)
+            _pseudoConsole?.Dispose();
+            _pseudoConsole = null;
+
+            // Закрываем пайпы
+            _inputPipe?.Dispose();
+            _inputPipe = null;
+
+            _outputPipe?.Dispose();
+            _outputPipe = null;
+            }
+        }
+
+    // ==================================================================================
+    // НИЖЕ РАСПОЛОЖЕНЫ ВСЕ ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ ИЗ ВАШИХ ФАЙЛОВ (БЕЗ ИЗМЕНЕНИЙ ЛОГИКИ)
+    // ==================================================================================
+
+    /// <summary>
+    /// Utility functions around the new Pseudo Console APIs
+    /// </summary>
+    internal sealed class PseudoConsole : IDisposable
+        {
+        public static readonly IntPtr PseudoConsoleThreadAttribute = (IntPtr)Native.PseudoConsoleApi.PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE;
+
+        public IntPtr Handle { get; }
+
+        private PseudoConsole(IntPtr handle)
+            {
+            this.Handle = handle;
+            }
+
+        internal static PseudoConsole Create(SafeFileHandle inputReadSide, SafeFileHandle outputWriteSide, int width, int height)
+            {
+            var createResult = Native.PseudoConsoleApi.CreatePseudoConsole(
+                new Native.PseudoConsoleApi.COORD { X = (short)width, Y = (short)height },
+                inputReadSide, outputWriteSide,
+                0, out IntPtr hPC);
+            if (createResult != 0)
                 {
-                Log.Error(ex, "Stream read error in ReadRawStreamAsync");
+                throw new InvalidOperationException("Could not create pseudo console. Error Code " + createResult);
+                }
+            return new PseudoConsole(hPC);
+            }
+
+        public void Dispose()
+            {
+            Native.PseudoConsoleApi.ClosePseudoConsole(Handle);
+            }
+        }
+
+    internal sealed class PseudoConsolePipe : IDisposable
+        {
+        public readonly SafeFileHandle ReadSide;
+        public readonly SafeFileHandle WriteSide;
+
+        public PseudoConsolePipe()
+            {
+            if (!Native.PseudoConsoleApi.CreatePipe(out ReadSide, out WriteSide, IntPtr.Zero, 0))
+                {
+                throw new InvalidOperationException("failed to create pipe");
                 }
             }
 
-        private async Task ReadStreamAsync(StreamReader reader)
+        void Dispose(bool disposing)
             {
-            char[] buffer = new char[1024];
-            StringBuilder lineBuffer = new StringBuilder();
-
-            try
+            if (disposing)
                 {
-                while (true)
-                    {
-                    int charsRead = await reader.ReadAsync(buffer, 0, buffer.Length);
-                    if (charsRead == 0) break;
-
-                    lineBuffer.Append(buffer, 0, charsRead);
-                    string content = lineBuffer.ToString();
-
-                    int splitIndex;
-                    char[] separators = { '\n', '\r' };
-
-                    while (( splitIndex = content.IndexOfAny(separators) ) >= 0)
-                        {
-                        string line = content.Substring(0, splitIndex);
-
-                        if (line.Length > 0)
-                            {
-                            OnOutputReceived?.Invoke(line);
-                            }
-
-                        int nextCharIdx = splitIndex + 1;
-                        if (nextCharIdx < content.Length &&
-                            ( ( content[splitIndex] == '\r' && content[nextCharIdx] == '\n' ) ||
-                             ( content[splitIndex] == '\n' && content[nextCharIdx] == '\r' ) ))
-                            {
-                            nextCharIdx++;
-                            }
-                        content = content.Substring(nextCharIdx);
-                        }
-
-                    lineBuffer.Clear();
-                    lineBuffer.Append(content);
-                    }
-
-                // Output any remaining content
-                if (lineBuffer.Length > 0)
-                    {
-                    OnOutputReceived?.Invoke(lineBuffer.ToString());
-                    }
-                }
-            catch (Exception ex)
-                {
-                Log.Debug($"Stream read ended: {ex.Message}");
+                ReadSide?.Dispose();
+                WriteSide?.Dispose();
                 }
             }
 
         public void Dispose()
             {
-            if (_disposed) return;
-            _disposed = true;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+            }
+        }
 
-            try
+    internal sealed class Process : IDisposable
+        {
+        public Process(Native.ProcessApi.STARTUPINFOEX startupInfo, Native.ProcessApi.PROCESS_INFORMATION processInfo)
+            {
+            StartupInfo = startupInfo;
+            ProcessInfo = processInfo;
+            }
+
+        public Native.ProcessApi.STARTUPINFOEX StartupInfo { get; }
+        public Native.ProcessApi.PROCESS_INFORMATION ProcessInfo { get; }
+
+        private bool disposedValue = false;
+
+        void Dispose(bool disposing)
+            {
+            if (!disposedValue)
                 {
-                // Close the input writer (which will dispose the SafeFileHandle)
-                _inputWriter?.Dispose();
-                _inputWriter = null;
+                if (disposing) { }
 
-                // Dispose SafeFileHandles (they'll close the native handles)
-                _inputWriteSafeHandle?.Dispose();
-                _inputWriteSafeHandle = null;
-
-                _outputReadSafeHandle?.Dispose();
-                _outputReadSafeHandle = null;
-
-                // Close the pseudoconsole
-                if (_hPc != IntPtr.Zero)
+                if (StartupInfo.lpAttributeList != IntPtr.Zero)
                     {
-                    ClosePseudoConsole(_hPc);
-                    _hPc = IntPtr.Zero;
+                    Native.ProcessApi.DeleteProcThreadAttributeList(StartupInfo.lpAttributeList);
+                    Marshal.FreeHGlobal(StartupInfo.lpAttributeList);
                     }
 
-                // Close process handles
-                if (_pi.hProcess != IntPtr.Zero)
+                if (ProcessInfo.hProcess != IntPtr.Zero)
                     {
-                    CloseHandle(_pi.hProcess);
-                    _pi.hProcess = IntPtr.Zero;
+                    Native.ProcessApi.CloseHandle(ProcessInfo.hProcess);
+                    }
+                if (ProcessInfo.hThread != IntPtr.Zero)
+                    {
+                    Native.ProcessApi.CloseHandle(ProcessInfo.hThread);
                     }
 
-                if (_pi.hThread != IntPtr.Zero)
-                    {
-                    CloseHandle(_pi.hThread);
-                    _pi.hThread = IntPtr.Zero;
-                    }
+                disposedValue = true;
                 }
-            catch (Exception ex)
+            }
+
+        ~Process()
+            {
+            Dispose(false);
+            }
+
+        public void Dispose()
+            {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+            }
+        }
+
+    static class ProcessFactory
+        {
+        internal static Process Start(string command, IntPtr attributes, IntPtr hPC)
+            {
+            var startupInfo = ConfigureProcessThread(hPC, attributes);
+            var processInfo = RunProcess(ref startupInfo, command);
+            return new Process(startupInfo, processInfo);
+            }
+
+        private static Native.ProcessApi.STARTUPINFOEX ConfigureProcessThread(IntPtr hPC, IntPtr attributes)
+            {
+            var lpSize = IntPtr.Zero;
+            var success = Native.ProcessApi.InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref lpSize);
+            if (success || lpSize == IntPtr.Zero) throw new InvalidOperationException("Could not calculate attribute list size.");
+
+            var startupInfo = new Native.ProcessApi.STARTUPINFOEX();
+            startupInfo.StartupInfo.cb = Marshal.SizeOf<Native.ProcessApi.STARTUPINFOEX>();
+            startupInfo.lpAttributeList = Marshal.AllocHGlobal(lpSize);
+
+            startupInfo.StartupInfo.dwFlags = (int)Native.ProcessApi.STARTF_USESHOWWINDOW;
+            startupInfo.StartupInfo.wShowWindow = Native.ProcessApi.SW_HIDE;
+
+            success = Native.ProcessApi.InitializeProcThreadAttributeList(startupInfo.lpAttributeList, 1, 0, ref lpSize);
+            if (!success) throw new InvalidOperationException("Could not set up attribute list.");
+
+            success = Native.ProcessApi.UpdateProcThreadAttribute(
+                startupInfo.lpAttributeList,
+                0,
+                attributes,
+                hPC,
+                (IntPtr)IntPtr.Size,
+                IntPtr.Zero,
+                IntPtr.Zero
+            );
+            if (!success) throw new InvalidOperationException("Could not set pseudoconsole thread attribute.");
+
+            return startupInfo;
+            }
+
+        private static Native.ProcessApi.PROCESS_INFORMATION RunProcess(ref Native.ProcessApi.STARTUPINFOEX sInfoEx, string commandLine)
+            {
+            int securityAttributeSize = Marshal.SizeOf<Native.ProcessApi.SECURITY_ATTRIBUTES>();
+            var pSec = new Native.ProcessApi.SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
+            var tSec = new Native.ProcessApi.SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
+
+            var success = Native.ProcessApi.CreateProcess(
+                lpApplicationName: null,
+                lpCommandLine: commandLine,
+                lpProcessAttributes: ref pSec,
+                lpThreadAttributes: ref tSec,
+                bInheritHandles: false,
+                dwCreationFlags: Native.ProcessApi.EXTENDED_STARTUPINFO_PRESENT,
+                lpEnvironment: IntPtr.Zero,
+                lpCurrentDirectory: null,
+                lpStartupInfo: ref sInfoEx,
+                lpProcessInformation: out Native.ProcessApi.PROCESS_INFORMATION pInfo
+            );
+            if (!success)
                 {
-                Log.Error(ex, "Error during ProcessExecutor disposal");
+                throw new InvalidOperationException("Could not create process. " + Marshal.GetLastWin32Error());
                 }
+
+            return pInfo;
+            }
+        }
+
+    namespace Native
+        {
+        static class ConsoleApi
+            {
+            internal const int STD_OUTPUT_HANDLE = -11;
+            internal const uint ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+            internal const uint DISABLE_NEWLINE_AUTO_RETURN = 0x0008;
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            internal static extern SafeFileHandle GetStdHandle(int nStdHandle);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            internal static extern bool SetConsoleMode(SafeFileHandle hConsoleHandle, uint mode);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            internal static extern bool GetConsoleMode(SafeFileHandle handle, out uint mode);
+
+            internal delegate bool ConsoleEventDelegate(CtrlTypes ctrlType);
+
+            internal enum CtrlTypes : uint
+                {
+                CTRL_C_EVENT = 0,
+                CTRL_BREAK_EVENT,
+                CTRL_CLOSE_EVENT,
+                CTRL_LOGOFF_EVENT = 5,
+                CTRL_SHUTDOWN_EVENT
+                }
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            internal static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
+            }
+
+        static class PseudoConsoleApi
+            {
+            internal const uint PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016;
+
+            [StructLayout(LayoutKind.Sequential)]
+            internal struct COORD
+                {
+                public short X;
+                public short Y;
+                }
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            internal static extern int CreatePseudoConsole(COORD size, SafeFileHandle hInput, SafeFileHandle hOutput, uint dwFlags, out IntPtr phPC);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            internal static extern int ResizePseudoConsole(IntPtr hPC, COORD size);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            internal static extern int ClosePseudoConsole(IntPtr hPC);
+
+            [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+            internal static extern bool CreatePipe(out SafeFileHandle hReadPipe, out SafeFileHandle hWritePipe, IntPtr lpPipeAttributes, int nSize);
+            }
+
+        static class ProcessApi
+            {
+            internal const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
+            internal const uint STARTF_USESHOWWINDOW = 0x00000001;
+            internal const short SW_HIDE = 0;
+
+            [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+            internal struct STARTUPINFOEX
+                {
+                public STARTUPINFO StartupInfo;
+                public IntPtr lpAttributeList;
+                }
+
+            [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+            internal struct STARTUPINFO
+                {
+                public Int32 cb;
+                public string lpReserved;
+                public string lpDesktop;
+                public string lpTitle;
+                public Int32 dwX;
+                public Int32 dwY;
+                public Int32 dwXSize;
+                public Int32 dwYSize;
+                public Int32 dwXCountChars;
+                public Int32 dwYCountChars;
+                public Int32 dwFillAttribute;
+                public Int32 dwFlags;
+                public Int16 wShowWindow;
+                public Int16 cbReserved2;
+                public IntPtr lpReserved2;
+                public IntPtr hStdInput;
+                public IntPtr hStdOutput;
+                public IntPtr hStdError;
+                }
+
+            [StructLayout(LayoutKind.Sequential)]
+            internal struct PROCESS_INFORMATION
+                {
+                public IntPtr hProcess;
+                public IntPtr hThread;
+                public int dwProcessId;
+                public int dwThreadId;
+                }
+
+            [StructLayout(LayoutKind.Sequential)]
+            internal struct SECURITY_ATTRIBUTES
+                {
+                public int nLength;
+                public IntPtr lpSecurityDescriptor;
+                public int bInheritHandle;
+                }
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            internal static extern bool InitializeProcThreadAttributeList(
+                IntPtr lpAttributeList, int dwAttributeCount, int dwFlags, ref IntPtr lpSize);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            internal static extern bool UpdateProcThreadAttribute(
+                IntPtr lpAttributeList, uint dwFlags, IntPtr attribute, IntPtr lpValue,
+                IntPtr cbSize, IntPtr lpPreviousValue, IntPtr lpReturnSize);
+
+            [DllImport("kernel32.dll")]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            internal static extern bool CreateProcess(
+                string lpApplicationName, string lpCommandLine, ref SECURITY_ATTRIBUTES lpProcessAttributes,
+                ref SECURITY_ATTRIBUTES lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags,
+                IntPtr lpEnvironment, string lpCurrentDirectory, [In] ref STARTUPINFOEX lpStartupInfo,
+                out PROCESS_INFORMATION lpProcessInformation);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            internal static extern bool DeleteProcThreadAttributeList(IntPtr lpAttributeList);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            internal static extern bool CloseHandle(IntPtr hObject);
             }
         }
     }

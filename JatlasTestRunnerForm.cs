@@ -34,8 +34,11 @@ namespace ATT_Wrapper
             _mapper = new MappingManager(mappingPath);
             _gridController = new ResultsGridController(dgvResults, _mapper);
 
+            // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
             _executor.OnOutputReceived += HandleOutput;
+            // Подписываемся на завершение процесса
             _executor.OnExited += HandleExit;
+            // -----------------------
 
             Log.Information("Event handlers subscribed");
 
@@ -103,10 +106,20 @@ namespace ATT_Wrapper
             try
                 {
                 string fullPath = Path.Combine(SCRIPT_PATH, script);
-                Log.Information($"Starting test: {fullPath} {args}");
-                String cmdFullPath = "C:\\WINDOWS\\system32\\cmd.exe";
-                _executor.Start(cmdFullPath, "/c echo HELLO_FROM_PIPE & echo TEST_COLOR");
-                //_executor.Start(fullPath, args);
+
+                // --- ВАЖНОЕ ИЗМЕНЕНИЕ ---
+                // Формируем единую командную строку. 
+                // Если путь содержит пробелы, его нужно обернуть в кавычки.
+                string commandLine = $"\"{fullPath}\" {args}";
+
+                Log.Information($"Starting test: {commandLine}");
+
+                // Удаляем тестовый код с cmd.exe и используем реальную команду
+                // _executor.Start(cmdFullPath + "/c echo HELLO_FROM_PIPE & echo TEST_COLOR"); <--- УДАЛИТЬ
+
+                _executor.Start(commandLine);
+                // ------------------------
+
                 Log.Information("Process started successfully");
                 }
             catch (Exception ex)
@@ -162,9 +175,12 @@ namespace ATT_Wrapper
                 }
             }
 
-        private void HandleExit()
+        private void HandleExit(object sender, EventArgs e)
             {
             Log.Information("Process exited");
+
+            // Проверяем, не уничтожена ли форма, так как вызов идет из другого потока
+            if (this.IsDisposed || !this.IsHandleCreated) return;
 
             this.BeginInvoke((Action)( () =>
             {
