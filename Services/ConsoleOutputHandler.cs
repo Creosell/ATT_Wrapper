@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using ATT_Wrapper.Components;
+using Serilog;
 
 namespace ATT_Wrapper.Services
     {
@@ -14,16 +15,13 @@ namespace ATT_Wrapper.Services
         private readonly Action<string> _statusCallback;
         private readonly Action _enterCallback;
 
-        // Дефолтные стили
+        // Цвета и шрифты
         private readonly Color _defaultColor = Color.Gainsboro;
         private readonly Font _defaultFont = new Font("Consolas", 10F, FontStyle.Regular);
         private readonly Font _boldFont = new Font("Consolas", 10F, FontStyle.Bold);
 
-        // Regex для поиска ANSI escape-последовательностей
+        // Улучшенный Regex для ANSI CSI последовательностей (CSI = ESC [ ... )
         private const string AnsiRegex = @"\x1B\[[0-9;?]*[ -/]*[@-~]";
-
-        // Буфер для сборки полных строк (для парсера логики)
-        private StringBuilder _lineBuffer = new StringBuilder();
 
         public ConsoleOutputHandler(ILogParser parser, ResultsGridController gridController, Action<string> statusCallback, Action enterCallback)
             {
@@ -33,76 +31,58 @@ namespace ATT_Wrapper.Services
             _enterCallback = enterCallback;
             }
 
-        // Входная точка для сырых данных из ConPty
-        public void ProcessRawData(string rawData, RichTextBox rtbLog)
+        public void ProcessLine(string rawLine, RichTextBox rtbLog)
             {
-            if (string.IsNullOrEmpty(rawData)) return;
+            if (string.IsNullOrWhiteSpace(rawLine)) return;
 
-            // [LOG] Логируем входящий чанк данных
-            GeminiLogger.LogRawData("Handler Input Chunk", rawData);
+            // 1. Дебаг сырых данных (опционально, можно отключить позже)
+            // LogRawString(rawLine);
 
-            // 1. СРАЗУ рисуем то, что пришло (Native Look & Feel)
-            // Это позволяет видеть прогресс-бары и цвета в реальном времени
-            AppendTextToRichTextBox(rtbLog, rawData);
+            // 2. Создаем чистую версию строки (удаляем все ANSI коды)
+            string plainLine = Regex.Replace(rawLine, AnsiRegex, "");
 
-            // 2. Накапливаем данные для логического парсера (ему нужны полные строки)
-            _lineBuffer.Append(rawData);
-            ProcessBufferedLines();
-            }
+            // 3. Анализ содержимого
+            bool isProgress = plainLine.TrimStart().StartsWith("Running task:", StringComparison.OrdinalIgnoreCase);
+            bool isInfo = plainLine.Contains("INFO");
 
-        private void ProcessBufferedLines()
-            {
-            string content = _lineBuffer.ToString();
-            int newlineIndex;
-
-            // Ищем полные строки (заканчивающиеся на \n)
-            while (( newlineIndex = content.IndexOf('\n') ) >= 0)
-                {
-                string line = content.Substring(0, newlineIndex).TrimEnd('\r'); // Достаем строку без \r
-
-                // [LOG] Логируем факт выделения полной строки для парсера
-                // GeminiLogger.Debug($"Extracted full line for logic: '{line.Trim()}'");
-
-                ProcessLogicLine(line);
-
-                // Удаляем обработанную часть из контента
-                content = content.Substring(newlineIndex + 1);
-                }
-
-            // Обновляем буфер остатком
-            _lineBuffer.Clear();
-            _lineBuffer.Append(content);
-            }
-
-        private void ProcessLogicLine(string line)
-            {
-            // Очищаем от ANSI кодов для анализа текста
-            string plainLine = Regex.Replace(line, AnsiRegex, "");
-
-            // Ловим "Press any key"
+            // 4. Логика ввода (Pause)
             if (plainLine.Contains("Press any key"))
                 {
-                GeminiLogger.Log("Detected 'Press any key' -> Triggering callbacks");
                 _statusCallback?.Invoke("Finalizing...");
                 _enterCallback?.Invoke();
                 return;
                 }
 
-            // Отправляем в парсер (обновление таблицы)
-            // Парсеру не обязательно знать про цвета, он смотрит суть
-            _parser.ParseLine(plainLine,
-                (status, msg) =>
+            // 5. Вывод в Expert View (RichTextBox)
+            if (!isInfo && !isProgress)
                 {
-                    GeminiLogger.Log($"Parser Result -> Status: {status}, Msg: {msg}");
-                    _gridController.HandleLogMessage(status, msg);
-                },
+                // Передаем сырую строку, чтобы распарсить цвета
+                AppendTextToRichTextBox(rtbLog, rawLine + Environment.NewLine);
+                }
+
+            // 6. Парсинг в таблицу (Simple View)
+            _parser.ParseLine(plainLine,
+                (status, msg) => _gridController.HandleLogMessage(status, msg),
                 (progMsg) => _statusCallback?.Invoke(progMsg)
             );
             }
 
+        private void LogRawString(string line)
+            {
+            StringBuilder sb = new StringBuilder();
+            foreach (char c in line)
+                {
+                if (c == 0x1B) sb.Append("[ESC]");
+                else if (char.IsControl(c)) sb.Append($"[x{(int)c:X2}]");
+                else sb.Append(c);
+                }
+            Log.Debug($"[RAW HEX] {sb}");
+            }
+
         private void AppendTextToRichTextBox(RichTextBox box, string text)
             {
-            // Разбиваем текст на куски: [Текст] [ANSI-код] [Текст]
+            // Разбиваем строку на сегменты: [Текст] [Код] [Текст] ...
+            // Группировка () в Regex.Split сохраняет разделители в массиве
             string[] parts = Regex.Split(text, $"({AnsiRegex})");
 
             foreach (string part in parts)
@@ -111,23 +91,25 @@ namespace ATT_Wrapper.Services
 
                 if (part.StartsWith("\x1B["))
                     {
-                    // Это код цвета/стиля -> Меняем настройки кисти
+                    // Это ANSI код -> Применяем стиль
                     ApplyAnsiCode(box, part);
                     }
                 else
                     {
-                    // Это просто текст -> Пишем его ТЕКУЩИМ цветом
-                    // Мы больше не вмешиваемся в цвета здесь (никакого GetKeywordColor)
+                    // Это текст -> Проверяем на ключевые слова
+                    Color keywordColor = GetKeywordColor(part);
 
-                    // [LOG] Логируем, какой текст пишем и текущий цвет
-                    // GeminiLogger.Debug($"Draw Text: '{part.Trim()}' Color: {box.SelectionColor.Name}");
+                    // Если найдено ключевое слово (PASS/FAIL), принудительно меняем цвет,
+                    // игнорируя текущий контекст. Это решает проблему "белых" PASS.
+                    if (keywordColor != _defaultColor)
+                        {
+                        box.SelectionColor = keywordColor;
+                        }
 
+                    // Устанавливаем курсор в конец и пишем
                     box.SelectionStart = box.TextLength;
                     box.SelectionLength = 0;
                     box.AppendText(part);
-
-                    // Автоскролл
-                    box.ScrollToCaret();
                     }
                 }
             }
@@ -136,12 +118,12 @@ namespace ATT_Wrapper.Services
             {
             try
                 {
+                // Извлекаем содержимое кода (числа между [ и m)
                 var match = Regex.Match(ansiSeq, @"\[([0-9;]+)m");
                 if (match.Success)
                     {
                     string[] codes = match.Groups[1].Value.Split(';');
 
-                    // Настройки применяются к *будущему* тексту (Selection)
                     box.SelectionStart = box.TextLength;
                     box.SelectionLength = 0;
 
@@ -151,38 +133,39 @@ namespace ATT_Wrapper.Services
                             {
                             if (code == 0) // Reset
                                 {
-                                GeminiLogger.Debug("ANSI [0] -> Reset to Default");
                                 box.SelectionColor = _defaultColor;
                                 box.SelectionFont = _defaultFont;
                                 }
                             else if (code == 1) // Bold
                                 {
-                                GeminiLogger.Debug("ANSI [1] -> Bold");
                                 box.SelectionFont = _boldFont;
-                                // Часто Bold также делает текст белым/ярким в терминалах
+                                // Часто Bold также означает ярко-белый цвет
                                 if (box.SelectionColor == _defaultColor) box.SelectionColor = Color.White;
                                 }
                             else // Colors
                                 {
                                 Color? c = GetAnsiColor(code);
-                                if (c.HasValue)
-                                    {
-                                    GeminiLogger.Debug($"ANSI [{code}] -> Color {c.Value.Name}");
-                                    box.SelectionColor = c.Value;
-                                    }
-                                else
-                                    {
-                                    GeminiLogger.Debug($"ANSI [{code}] -> Unknown/Unsupported");
-                                    }
+                                if (c.HasValue) box.SelectionColor = c.Value;
                                 }
                             }
                         }
                     }
                 }
-            catch (Exception ex)
-                {
-                GeminiLogger.Error(ex, $"Error applying ANSI code: {ansiSeq}");
-                }
+            catch { /* Игнорируем некорректные коды */ }
+            }
+
+        private Color GetKeywordColor(string text)
+            {
+            string trimmed = text.TrimStart();
+            // Строгая проверка начал строк
+            if (trimmed.StartsWith("PASS")) return Color.LightGreen;
+            if (trimmed.StartsWith("FAIL")) return Color.Salmon;
+            if (trimmed.StartsWith("SKIPPED")) return Color.Gold;
+            if (trimmed.Contains("ERROR")) return Color.Salmon;
+            if (trimmed.Contains("WARNING")) return Color.Gold;
+
+            // Если ничего не найдено - возвращаем дефолтный цвет (маркер "не менять")
+            return _defaultColor;
             }
 
         private Color? GetAnsiColor(int code)
@@ -190,14 +173,13 @@ namespace ATT_Wrapper.Services
             switch (code)
                 {
                 case 30: return Color.Gray;
-                case 31: return Color.Salmon; // Red
-                case 32: return Color.LightGreen; // Green
-                case 33: return Color.Gold; // Yellow
-                case 34: return Color.CornflowerBlue; // Blue
-                case 35: return Color.Violet; // Magenta
-                case 36: return Color.Cyan; // Cyan
-                case 37: return Color.White; // White
-                // Bright versions (90-97)
+                case 31: return Color.Salmon;
+                case 32: return Color.LightGreen;
+                case 33: return Color.Gold;
+                case 34: return Color.CornflowerBlue;
+                case 35: return Color.Violet;
+                case 36: return Color.Cyan;
+                case 37: return Color.White;
                 case 90: return Color.DimGray;
                 case 91: return Color.Red;
                 case 92: return Color.Lime;

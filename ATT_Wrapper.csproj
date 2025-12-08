@@ -131,9 +131,7 @@
     <Compile Include="MappingManager.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services\ConPtyShell.cs" />
     <Compile Include="Services\ConsoleOutputHandler.cs" />
-    <Compile Include="Services\GeminiLogger.cs" />
     <Compile Include="Services\ProcessExecutor.cs" />
     <Compile Include="Services\ThemeManager.cs" />
     <EmbeddedResource Include="JatlasTestRunnerForm.resx">
