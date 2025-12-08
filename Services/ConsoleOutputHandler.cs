@@ -16,9 +16,12 @@ namespace ATT_Wrapper.Services
         private readonly Action _enterCallback;
 
         // Цвета и шрифты
-        private readonly Color _defaultColor = Color.Gainsboro;
+        private readonly Color _defaultForeColor = Color.Gainsboro;
+        private readonly Color _defaultBackColor = Color.Black; // Предполагаем черный фон по умолчанию для консоли
         private readonly Font _defaultFont = new Font("Consolas", 10F, FontStyle.Regular);
         private readonly Font _boldFont = new Font("Consolas", 10F, FontStyle.Bold);
+        private readonly Font _italicFont = new Font("Consolas", 10F, FontStyle.Italic);
+        private readonly Font _underlineFont = new Font("Consolas", 10F, FontStyle.Underline);
 
         // Улучшенный Regex для ANSI CSI последовательностей (CSI = ESC [ ... )
         private const string AnsiRegex = @"\x1B\[[0-9;?]*[ -/]*[@-~]";
@@ -36,7 +39,7 @@ namespace ATT_Wrapper.Services
             if (string.IsNullOrWhiteSpace(rawLine)) return;
 
             // 1. Дебаг сырых данных (опционально, можно отключить позже)
-            // LogRawString(rawLine);
+            LogRawString(rawLine);
 
             // 2. Создаем чистую версию строки (удаляем все ANSI коды)
             string plainLine = Regex.Replace(rawLine, AnsiRegex, "");
@@ -56,7 +59,7 @@ namespace ATT_Wrapper.Services
             // 5. Вывод в Expert View (RichTextBox)
             if (!isInfo && !isProgress)
                 {
-                // Передаем сырую строку, чтобы распарсить цвета
+                // Передаем сырую строку, чтобы распарсить цвета и стили
                 AppendTextToRichTextBox(rtbLog, rawLine + Environment.NewLine);
                 }
 
@@ -101,7 +104,7 @@ namespace ATT_Wrapper.Services
 
                     // Если найдено ключевое слово (PASS/FAIL), принудительно меняем цвет,
                     // игнорируя текущий контекст. Это решает проблему "белых" PASS.
-                    if (keywordColor != _defaultColor)
+                    if (keywordColor != _defaultForeColor)
                         {
                         box.SelectionColor = keywordColor;
                         }
@@ -127,27 +130,91 @@ namespace ATT_Wrapper.Services
                     box.SelectionStart = box.TextLength;
                     box.SelectionLength = 0;
 
-                    foreach (string codeStr in codes)
+                    int i = 0;
+                    while (i < codes.Length)
                         {
-                        if (int.TryParse(codeStr, out int code))
+                        if (int.TryParse(codes[i], out int code))
                             {
-                            if (code == 0) // Reset
+                            if (code == 0) // Reset all
                                 {
-                                box.SelectionColor = _defaultColor;
+                                box.SelectionColor = _defaultForeColor;
+                                box.SelectionBackColor = _defaultBackColor;
                                 box.SelectionFont = _defaultFont;
                                 }
                             else if (code == 1) // Bold
                                 {
-                                box.SelectionFont = _boldFont;
-                                // Часто Bold также означает ярко-белый цвет
-                                if (box.SelectionColor == _defaultColor) box.SelectionColor = Color.White;
+                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Bold);
                                 }
-                            else // Colors
+                            else if (code == 3) // Italic
                                 {
-                                Color? c = GetAnsiColor(code);
-                                if (c.HasValue) box.SelectionColor = c.Value;
+                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Italic);
+                                }
+                            else if (code == 4) // Underline
+                                {
+                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Underline);
+                                }
+                            else if (code == 22) // Normal intensity (not bold, not faint)
+                                {
+                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Regular);
+                                }
+                            else if (code == 23) // Not italic
+                                {
+                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Regular);
+                                }
+                            else if (code == 24) // Not underline
+                                {
+                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Regular);
+                                }
+                            else if (code >= 30 && code <= 37) // Foreground color (standard)
+                                {
+                                box.SelectionColor = GetAnsiColor(code - 30, false);
+                                }
+                            else if (code >= 40 && code <= 47) // Background color (standard)
+                                {
+                                box.SelectionBackColor = GetAnsiColor(code - 40, false);
+                                }
+                            else if (code >= 90 && code <= 97) // Foreground color (bright)
+                                {
+                                box.SelectionColor = GetAnsiColor(code - 90, true);
+                                }
+                            else if (code >= 100 && code <= 107) // Background color (bright)
+                                {
+                                box.SelectionBackColor = GetAnsiColor(code - 100, true);
+                                }
+                            else if (code == 38 || code == 48) // Extended color (256 or RGB)
+                                {
+                                // Для 38;5;n (foreground 256), 38;2;r;g;b (RGB)
+                                // Аналогично для 48 background
+                                bool isFore = code == 38;
+                                i++;
+                                if (i < codes.Length && int.TryParse(codes[i], out int subcode))
+                                    {
+                                    if (subcode == 5 && i + 1 < codes.Length) // 256 color
+                                        {
+                                        i++;
+                                        if (int.TryParse(codes[i], out int colorIndex))
+                                            {
+                                            Color color = GetAnsi256Color(colorIndex);
+                                            if (isFore) box.SelectionColor = color;
+                                            else box.SelectionBackColor = color;
+                                            }
+                                        }
+                                    else if (subcode == 2 && i + 3 < codes.Length) // RGB
+                                        {
+                                        i++;
+                                        int r = int.Parse(codes[i]);
+                                        i++;
+                                        int g = int.Parse(codes[i]);
+                                        i++;
+                                        int b = int.Parse(codes[i]);
+                                        Color color = Color.FromArgb(r, g, b);
+                                        if (isFore) box.SelectionColor = color;
+                                        else box.SelectionBackColor = color;
+                                        }
+                                    }
                                 }
                             }
+                        i++;
                         }
                     }
                 }
@@ -165,30 +232,50 @@ namespace ATT_Wrapper.Services
             if (trimmed.Contains("WARNING")) return Color.Gold;
 
             // Если ничего не найдено - возвращаем дефолтный цвет (маркер "не менять")
-            return _defaultColor;
+            return _defaultForeColor;
             }
 
-        private Color? GetAnsiColor(int code)
+        private Color GetAnsiColor(int code, bool bright)
             {
             switch (code)
                 {
-                case 30: return Color.Gray;
-                case 31: return Color.Salmon;
-                case 32: return Color.LightGreen;
-                case 33: return Color.Gold;
-                case 34: return Color.CornflowerBlue;
-                case 35: return Color.Violet;
-                case 36: return Color.Cyan;
-                case 37: return Color.White;
-                case 90: return Color.DimGray;
-                case 91: return Color.Red;
-                case 92: return Color.Lime;
-                case 93: return Color.Yellow;
-                case 94: return Color.RoyalBlue;
-                case 95: return Color.Magenta;
-                case 96: return Color.Cyan;
-                case 97: return Color.White;
-                default: return null;
+                case 0: return bright ? Color.DimGray : Color.Black;
+                case 1: return bright ? Color.Red : Color.Maroon;
+                case 2: return bright ? Color.Lime : Color.Green;
+                case 3: return bright ? Color.Yellow : Color.Olive;
+                case 4: return bright ? Color.RoyalBlue : Color.Navy;
+                case 5: return bright ? Color.Magenta : Color.Purple;
+                case 6: return bright ? Color.Cyan : Color.Teal;
+                case 7: return bright ? Color.White : Color.Silver;
+                default: return _defaultForeColor;
+                }
+            }
+
+        private Color GetAnsi256Color(int index)
+            {
+            // Простая реализация для 256 цветов (можно расширить таблицей)
+            // Здесь базовая аппроксимация; для полной таблицы используйте lookup table
+            if (index < 0 || index > 255) return _defaultForeColor;
+
+            if (index < 16)
+                {
+                // Стандартные цвета (0-15)
+                return GetAnsiColor(index % 8, index >= 8);
+                }
+            else if (index < 232)
+                {
+                // 216 цветов куба (16-231)
+                int val = index - 16;
+                int r = ( val / 36 ) * 51;
+                int g = ( ( val / 6 ) % 6 ) * 51;
+                int b = ( val % 6 ) * 51;
+                return Color.FromArgb(r, g, b);
+                }
+            else
+                {
+                // Grayscale (232-255)
+                int gray = ( index - 232 ) * 10 + 8;
+                return Color.FromArgb(gray, gray, gray);
                 }
             }
         }
