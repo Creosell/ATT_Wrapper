@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -8,230 +10,345 @@ using Serilog;
 
 namespace ATT_Wrapper.Services
     {
-    public class ConsoleOutputHandler
+    public class ConsoleOutputHandler : IDisposable
         {
         private readonly ILogParser _parser;
         private readonly ResultsGridController _gridController;
         private readonly Action<string> _statusCallback;
         private readonly Action _enterCallback;
+        private readonly StreamWriter _fileLogger;
+        private readonly object _logLock = new object();
 
-        // Цвета и шрифты
+        // Colors and fonts
         private readonly Color _defaultForeColor = Color.Gainsboro;
-        private readonly Color _defaultBackColor = Color.Black; // Предполагаем черный фон по умолчанию для консоли
+        private readonly Color _defaultBackColor = Color.FromArgb(30, 30, 30); // Dark background
         private readonly Font _defaultFont = new Font("Consolas", 10F, FontStyle.Regular);
         private readonly Font _boldFont = new Font("Consolas", 10F, FontStyle.Bold);
         private readonly Font _italicFont = new Font("Consolas", 10F, FontStyle.Italic);
         private readonly Font _underlineFont = new Font("Consolas", 10F, FontStyle.Underline);
 
-        // Улучшенный Regex для ANSI CSI последовательностей (CSI = ESC [ ... )
+        // Improved ANSI CSI sequence regex (CSI = ESC [ ... )
         private const string AnsiRegex = @"\x1B\[[0-9;?]*[ -/]*[@-~]";
 
-        public ConsoleOutputHandler(ILogParser parser, ResultsGridController gridController, Action<string> statusCallback, Action enterCallback)
+        // Additional ANSI sequences to handle
+        private const string AnsiAllRegex = @"\x1B(\[[0-9;?]*[ -/]*[@-~]|[>=]|[()][AB012]|\][^\x07]*\x07)";
+
+        public ConsoleOutputHandler(
+            ILogParser parser,
+            ResultsGridController gridController,
+            Action<string> statusCallback,
+            Action enterCallback,
+            string logFilePath = null)
             {
             _parser = parser;
             _gridController = gridController;
             _statusCallback = statusCallback;
             _enterCallback = enterCallback;
+
+            // Setup file logging if path provided
+            if (!string.IsNullOrEmpty(logFilePath))
+                {
+                try
+                    {
+                    var directory = Path.GetDirectoryName(logFilePath);
+                    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                        {
+                        Directory.CreateDirectory(directory);
+                        }
+
+                    _fileLogger = new StreamWriter(logFilePath, append: false, Encoding.UTF8)
+                        {
+                        AutoFlush = true
+                        };
+
+                    Log.Information($"Console output will be logged to: {logFilePath}");
+                    }
+                catch (Exception ex)
+                    {
+                    Log.Error(ex, "Failed to create console log file");
+                    }
+                }
             }
 
         public void ProcessLine(string rawLine, RichTextBox rtbLog)
             {
-            if (string.IsNullOrWhiteSpace(rawLine)) return;
+            if (string.IsNullOrEmpty(rawLine)) return;
 
-            // 1. Дебаг сырых данных (опционально, можно отключить позже)
-            LogRawString(rawLine);
+            // Log to all destinations
+            LogToAllDestinations(rawLine);
 
-            // 2. Создаем чистую версию строки (удаляем все ANSI коды)
-            string plainLine = Regex.Replace(rawLine, AnsiRegex, "");
+            // Create clean version of the line (remove all ANSI codes)
+            string plainLine = Regex.Replace(rawLine, AnsiAllRegex, "");
 
-            // 3. Анализ содержимого
+            // Content analysis
             bool isProgress = plainLine.TrimStart().StartsWith("Running task:", StringComparison.OrdinalIgnoreCase);
             bool isInfo = plainLine.Contains("INFO");
 
-            // 4. Логика ввода (Pause)
-            if (plainLine.Contains("Press any key"))
+            // Pause logic - detect various pause messages
+            if (plainLine.IndexOf("Press any key", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                plainLine.IndexOf("Press Enter", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                plainLine.IndexOf("continue", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                plainLine.IndexOf("Press", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
+                Log.Information($"Pause detected in line: {plainLine}");
                 _statusCallback?.Invoke("Finalizing...");
                 _enterCallback?.Invoke();
                 return;
                 }
 
-            // 5. Вывод в Expert View (RichTextBox)
+            // Output to Expert View (RichTextBox) - use UI thread
             if (!isInfo && !isProgress)
                 {
-                // Передаем сырую строку, чтобы распарсить цвета и стили
-                AppendTextToRichTextBox(rtbLog, rawLine + Environment.NewLine);
+                if (rtbLog.InvokeRequired)
+                    {
+                    rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, rawLine + Environment.NewLine)));
+                    }
+                else
+                    {
+                    AppendTextToRichTextBox(rtbLog, rawLine + Environment.NewLine);
+                    }
                 }
 
-            // 6. Парсинг в таблицу (Simple View)
+            // Parse to table (Simple View)
             _parser.ParseLine(plainLine,
                 (status, msg) => _gridController.HandleLogMessage(status, msg),
                 (progMsg) => _statusCallback?.Invoke(progMsg)
             );
             }
 
-        private void LogRawString(string line)
+        private void LogToAllDestinations(string rawLine)
+            {
+            lock (_logLock)
+                {
+                // 1. Log to Visual Studio Debug Output (with ANSI codes visible as hex)
+                string debugLine = ConvertAnsiToReadableFormat(rawLine);
+                Debug.WriteLine($"[CONSOLE] {debugLine}");
+
+                // 2. Log to Serilog (which can go to file/console based on config)
+                Log.Debug("[CONSOLE] {RawOutput}", rawLine);
+
+                // 3. Log to dedicated file if configured
+                if (_fileLogger != null)
+                    {
+                    try
+                        {
+                        _fileLogger.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {rawLine}");
+                        }
+                    catch (Exception ex)
+                        {
+                        Log.Error(ex, "Failed to write to console log file");
+                        }
+                    }
+                }
+            }
+
+        private string ConvertAnsiToReadableFormat(string line)
             {
             StringBuilder sb = new StringBuilder();
             foreach (char c in line)
                 {
                 if (c == 0x1B) sb.Append("[ESC]");
+                else if (c == '\r') sb.Append("[CR]");
+                else if (c == '\n') sb.Append("[LF]");
+                else if (c == '\t') sb.Append("[TAB]");
                 else if (char.IsControl(c)) sb.Append($"[x{(int)c:X2}]");
                 else sb.Append(c);
                 }
-            Log.Debug($"[RAW HEX] {sb}");
+            return sb.ToString();
             }
 
         private void AppendTextToRichTextBox(RichTextBox box, string text)
             {
-            // Разбиваем строку на сегменты: [Текст] [Код] [Текст] ...
-            // Группировка () в Regex.Split сохраняет разделители в массиве
-            string[] parts = Regex.Split(text, $"({AnsiRegex})");
-
-            foreach (string part in parts)
+            try
                 {
-                if (string.IsNullOrEmpty(part)) continue;
+                // Split string into segments: [Text] [Code] [Text] ...
+                // Grouping () in Regex.Split keeps the separators in the array
+                string[] parts = Regex.Split(text, $"({AnsiRegex})");
 
-                if (part.StartsWith("\x1B["))
-                    {
-                    // Это ANSI код -> Применяем стиль
-                    ApplyAnsiCode(box, part);
-                    }
-                else
-                    {
-                    // Это текст -> Проверяем на ключевые слова
-                    Color keywordColor = GetKeywordColor(part);
+                // Store current state
+                Color currentForeColor = _defaultForeColor;
+                Color currentBackColor = _defaultBackColor;
+                FontStyle currentStyle = FontStyle.Regular;
 
-                    // Если найдено ключевое слово (PASS/FAIL), принудительно меняем цвет,
-                    // игнорируя текущий контекст. Это решает проблему "белых" PASS.
-                    if (keywordColor != _defaultForeColor)
+                foreach (string part in parts)
+                    {
+                    if (string.IsNullOrEmpty(part)) continue;
+
+                    if (part.StartsWith("\x1B["))
                         {
-                        box.SelectionColor = keywordColor;
+                        // This is an ANSI code -> Apply style
+                        ApplyAnsiCode(box, part, ref currentForeColor, ref currentBackColor, ref currentStyle);
                         }
+                    else
+                        {
+                        // This is text -> Check for keywords
+                        Color keywordColor = GetKeywordColor(part);
 
-                    // Устанавливаем курсор в конец и пишем
-                    box.SelectionStart = box.TextLength;
-                    box.SelectionLength = 0;
-                    box.AppendText(part);
+                        // If keyword found (PASS/FAIL), override current color
+                        if (keywordColor != _defaultForeColor)
+                            {
+                            box.SelectionColor = keywordColor;
+                            }
+                        else
+                            {
+                            box.SelectionColor = currentForeColor;
+                            }
+
+                        box.SelectionBackColor = currentBackColor;
+                        box.SelectionFont = new Font(_defaultFont, currentStyle);
+
+                        // Set cursor at the end and write
+                        box.SelectionStart = box.TextLength;
+                        box.SelectionLength = 0;
+                        box.AppendText(part);
+                        }
                     }
+
+                // Auto-scroll to bottom
+                box.SelectionStart = box.TextLength;
+                box.ScrollToCaret();
+                }
+            catch (Exception ex)
+                {
+                Log.Error(ex, "Error appending text to RichTextBox");
                 }
             }
 
-        private void ApplyAnsiCode(RichTextBox box, string ansiSeq)
+        private void ApplyAnsiCode(RichTextBox box, string ansiSeq, ref Color currentForeColor, ref Color currentBackColor, ref FontStyle currentStyle)
             {
             try
                 {
-                // Извлекаем содержимое кода (числа между [ и m)
-                var match = Regex.Match(ansiSeq, @"\[([0-9;]+)m");
-                if (match.Success)
+                // Extract code content (numbers between [ and m or other terminator)
+                var match = Regex.Match(ansiSeq, @"\[([0-9;]+)([a-zA-Z])");
+                if (!match.Success) return;
+
+                string command = match.Groups[2].Value;
+
+                // Only process SGR (Select Graphic Rendition) commands (m)
+                if (command != "m") return;
+
+                string[] codes = match.Groups[1].Value.Split(';');
+
+                box.SelectionStart = box.TextLength;
+                box.SelectionLength = 0;
+
+                int i = 0;
+                while (i < codes.Length)
                     {
-                    string[] codes = match.Groups[1].Value.Split(';');
-
-                    box.SelectionStart = box.TextLength;
-                    box.SelectionLength = 0;
-
-                    int i = 0;
-                    while (i < codes.Length)
+                    if (int.TryParse(codes[i], out int code))
                         {
-                        if (int.TryParse(codes[i], out int code))
+                        if (code == 0) // Reset all
                             {
-                            if (code == 0) // Reset all
+                            currentForeColor = _defaultForeColor;
+                            currentBackColor = _defaultBackColor;
+                            currentStyle = FontStyle.Regular;
+                            }
+                        else if (code == 1) // Bold
+                            {
+                            currentStyle |= FontStyle.Bold;
+                            }
+                        else if (code == 3) // Italic
+                            {
+                            currentStyle |= FontStyle.Italic;
+                            }
+                        else if (code == 4) // Underline
+                            {
+                            currentStyle |= FontStyle.Underline;
+                            }
+                        else if (code == 22) // Normal intensity (not bold)
+                            {
+                            currentStyle &= ~FontStyle.Bold;
+                            }
+                        else if (code == 23) // Not italic
+                            {
+                            currentStyle &= ~FontStyle.Italic;
+                            }
+                        else if (code == 24) // Not underline
+                            {
+                            currentStyle &= ~FontStyle.Underline;
+                            }
+                        else if (code >= 30 && code <= 37) // Foreground color (standard)
+                            {
+                            currentForeColor = GetAnsiColor(code - 30, false);
+                            }
+                        else if (code == 39) // Default foreground color
+                            {
+                            currentForeColor = _defaultForeColor;
+                            }
+                        else if (code >= 40 && code <= 47) // Background color (standard)
+                            {
+                            currentBackColor = GetAnsiColor(code - 40, false);
+                            }
+                        else if (code == 49) // Default background color
+                            {
+                            currentBackColor = _defaultBackColor;
+                            }
+                        else if (code >= 90 && code <= 97) // Foreground color (bright)
+                            {
+                            currentForeColor = GetAnsiColor(code - 90, true);
+                            }
+                        else if (code >= 100 && code <= 107) // Background color (bright)
+                            {
+                            currentBackColor = GetAnsiColor(code - 100, true);
+                            }
+                        else if (code == 38 || code == 48) // Extended color (256 or RGB)
+                            {
+                            bool isFore = code == 38;
+                            i++;
+                            if (i < codes.Length && int.TryParse(codes[i], out int subcode))
                                 {
-                                box.SelectionColor = _defaultForeColor;
-                                box.SelectionBackColor = _defaultBackColor;
-                                box.SelectionFont = _defaultFont;
-                                }
-                            else if (code == 1) // Bold
-                                {
-                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Bold);
-                                }
-                            else if (code == 3) // Italic
-                                {
-                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Italic);
-                                }
-                            else if (code == 4) // Underline
-                                {
-                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Underline);
-                                }
-                            else if (code == 22) // Normal intensity (not bold, not faint)
-                                {
-                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Regular);
-                                }
-                            else if (code == 23) // Not italic
-                                {
-                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Regular);
-                                }
-                            else if (code == 24) // Not underline
-                                {
-                                box.SelectionFont = new Font(box.SelectionFont ?? _defaultFont, FontStyle.Regular);
-                                }
-                            else if (code >= 30 && code <= 37) // Foreground color (standard)
-                                {
-                                box.SelectionColor = GetAnsiColor(code - 30, false);
-                                }
-                            else if (code >= 40 && code <= 47) // Background color (standard)
-                                {
-                                box.SelectionBackColor = GetAnsiColor(code - 40, false);
-                                }
-                            else if (code >= 90 && code <= 97) // Foreground color (bright)
-                                {
-                                box.SelectionColor = GetAnsiColor(code - 90, true);
-                                }
-                            else if (code >= 100 && code <= 107) // Background color (bright)
-                                {
-                                box.SelectionBackColor = GetAnsiColor(code - 100, true);
-                                }
-                            else if (code == 38 || code == 48) // Extended color (256 or RGB)
-                                {
-                                // Для 38;5;n (foreground 256), 38;2;r;g;b (RGB)
-                                // Аналогично для 48 background
-                                bool isFore = code == 38;
-                                i++;
-                                if (i < codes.Length && int.TryParse(codes[i], out int subcode))
+                                if (subcode == 5 && i + 1 < codes.Length) // 256 color
                                     {
-                                    if (subcode == 5 && i + 1 < codes.Length) // 256 color
+                                    i++;
+                                    if (int.TryParse(codes[i], out int colorIndex))
                                         {
-                                        i++;
-                                        if (int.TryParse(codes[i], out int colorIndex))
-                                            {
-                                            Color color = GetAnsi256Color(colorIndex);
-                                            if (isFore) box.SelectionColor = color;
-                                            else box.SelectionBackColor = color;
-                                            }
+                                        Color color = GetAnsi256Color(colorIndex);
+                                        if (isFore) currentForeColor = color;
+                                        else currentBackColor = color;
                                         }
-                                    else if (subcode == 2 && i + 3 < codes.Length) // RGB
+                                    }
+                                else if (subcode == 2 && i + 3 < codes.Length) // RGB
+                                    {
+                                    i++;
+                                    if (int.TryParse(codes[i], out int r))
                                         {
                                         i++;
-                                        int r = int.Parse(codes[i]);
-                                        i++;
-                                        int g = int.Parse(codes[i]);
-                                        i++;
-                                        int b = int.Parse(codes[i]);
-                                        Color color = Color.FromArgb(r, g, b);
-                                        if (isFore) box.SelectionColor = color;
-                                        else box.SelectionBackColor = color;
+                                        if (int.TryParse(codes[i], out int g))
+                                            {
+                                            i++;
+                                            if (int.TryParse(codes[i], out int b))
+                                                {
+                                                Color color = Color.FromArgb(r, g, b);
+                                                if (isFore) currentForeColor = color;
+                                                else currentBackColor = color;
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
-                        i++;
                         }
+                    i++;
                     }
                 }
-            catch { /* Игнорируем некорректные коды */ }
+            catch (Exception ex)
+                {
+                Log.Debug(ex, "Error parsing ANSI code: {Code}", ansiSeq);
+                }
             }
 
         private Color GetKeywordColor(string text)
             {
             string trimmed = text.TrimStart();
-            // Строгая проверка начал строк
-            if (trimmed.StartsWith("PASS")) return Color.LightGreen;
-            if (trimmed.StartsWith("FAIL")) return Color.Salmon;
-            if (trimmed.StartsWith("SKIPPED")) return Color.Gold;
+
+            // Strict check for line starts
+            if (trimmed.StartsWith("PASS", StringComparison.OrdinalIgnoreCase)) return Color.LightGreen;
+            if (trimmed.StartsWith("FAIL", StringComparison.OrdinalIgnoreCase)) return Color.Salmon;
+            if (trimmed.StartsWith("SKIPPED", StringComparison.OrdinalIgnoreCase)) return Color.Gold;
             if (trimmed.Contains("ERROR")) return Color.Salmon;
             if (trimmed.Contains("WARNING")) return Color.Gold;
 
-            // Если ничего не найдено - возвращаем дефолтный цвет (маркер "не менять")
+            // If nothing found - return default color (marker "don't change")
             return _defaultForeColor;
             }
 
@@ -243,7 +360,7 @@ namespace ATT_Wrapper.Services
                 case 1: return bright ? Color.Red : Color.Maroon;
                 case 2: return bright ? Color.Lime : Color.Green;
                 case 3: return bright ? Color.Yellow : Color.Olive;
-                case 4: return bright ? Color.RoyalBlue : Color.Navy;
+                case 4: return bright ? Color.DodgerBlue : Color.Navy;
                 case 5: return bright ? Color.Magenta : Color.Purple;
                 case 6: return bright ? Color.Cyan : Color.Teal;
                 case 7: return bright ? Color.White : Color.Silver;
@@ -253,18 +370,17 @@ namespace ATT_Wrapper.Services
 
         private Color GetAnsi256Color(int index)
             {
-            // Простая реализация для 256 цветов (можно расширить таблицей)
-            // Здесь базовая аппроксимация; для полной таблицы используйте lookup table
+            // Simple implementation for 256 colors
             if (index < 0 || index > 255) return _defaultForeColor;
 
             if (index < 16)
                 {
-                // Стандартные цвета (0-15)
+                // Standard colors (0-15)
                 return GetAnsiColor(index % 8, index >= 8);
                 }
             else if (index < 232)
                 {
-                // 216 цветов куба (16-231)
+                // 216 color cube (16-231)
                 int val = index - 16;
                 int r = ( val / 36 ) * 51;
                 int g = ( ( val / 6 ) % 6 ) * 51;
@@ -276,6 +392,22 @@ namespace ATT_Wrapper.Services
                 // Grayscale (232-255)
                 int gray = ( index - 232 ) * 10 + 8;
                 return Color.FromArgb(gray, gray, gray);
+                }
+            }
+
+        public void Dispose()
+            {
+            lock (_logLock)
+                {
+                try
+                    {
+                    _fileLogger?.Flush();
+                    _fileLogger?.Dispose();
+                    }
+                catch (Exception ex)
+                    {
+                    Log.Error(ex, "Error disposing ConsoleOutputHandler");
+                    }
                 }
             }
         }

@@ -84,6 +84,7 @@ namespace ATT_Wrapper.Services
         private const uint PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016;
         private const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
         private const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
+        private const uint CREATE_NO_WINDOW = 0x08000000;
         private const uint INFINITE = 0xFFFFFFFF;
         private const int ERROR_INSUFFICIENT_BUFFER = 122;
 
@@ -123,6 +124,9 @@ namespace ATT_Wrapper.Services
 
         [DllImport("kernel32.dll")]
         private static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
 
         public void Start(string scriptPath, string arguments)
             {
@@ -248,33 +252,52 @@ namespace ATT_Wrapper.Services
                 envPtr = Marshal.StringToHGlobalUni(envBlock.ToString());
 
                 // CRITICAL FIX: Command line must be mutable for CreateProcessW
-                // Try using application name and separate command line
-                string applicationName = "cmd.exe";
+                // Try running batch file directly (Windows will invoke cmd.exe automatically)
                 StringBuilder commandLineBuilder = new StringBuilder(32768);
 
-                // Build command line - when using applicationName, don't repeat cmd.exe
-                if (!string.IsNullOrEmpty(arguments))
+                // Try direct batch execution first
+                if (scriptPath.EndsWith(".bat", StringComparison.OrdinalIgnoreCase) ||
+                    scriptPath.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase))
                     {
-                    commandLineBuilder.Append($"cmd.exe /c \"{scriptPath}\" {arguments}");
+                    // For batch files, we need cmd.exe but WITHOUT /c to keep console alive
+                    // Use /k to keep cmd.exe running
+                    if (!string.IsNullOrEmpty(arguments))
+                        {
+                        commandLineBuilder.Append($"cmd.exe /k \"{scriptPath}\" {arguments} & exit");
+                        }
+                    else
+                        {
+                        commandLineBuilder.Append($"cmd.exe /k \"{scriptPath}\" & exit");
+                        }
+                    Log.Information("Using cmd.exe /k with auto-exit");
                     }
                 else
                     {
-                    commandLineBuilder.Append($"cmd.exe /c \"{scriptPath}\"");
+                    // For executables, run directly
+                    if (!string.IsNullOrEmpty(arguments))
+                        {
+                        commandLineBuilder.Append($"\"{scriptPath}\" {arguments}");
+                        }
+                    else
+                        {
+                        commandLineBuilder.Append($"\"{scriptPath}\"");
+                        }
                     }
 
-                Log.Information($"Application: {applicationName}");
+                Log.Information($"Application: {( scriptPath.EndsWith(".bat") || scriptPath.EndsWith(".cmd") ? "cmd.exe" : scriptPath )}");
                 Log.Information($"Command line: {commandLineBuilder}");
                 Log.Information($"Working directory: {executionDir ?? Environment.CurrentDirectory}");
 
                 // CRITICAL FIX: Set bInheritHandles to FALSE (the pseudoconsole handles inheritance)
                 // Must combine EXTENDED_STARTUPINFO_PRESENT with CREATE_UNICODE_ENVIRONMENT
+                // Add CREATE_NO_WINDOW to hide the console window
                 if (!CreateProcessW(
                     null,  // Let the system find cmd.exe
                     commandLineBuilder,  // Pass StringBuilder directly
                     IntPtr.Zero,
                     IntPtr.Zero,
                     false,  // bInheritHandles = false for pseudoconsole
-                    EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
+                    EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW,
                     envPtr,
                     executionDir ?? Environment.CurrentDirectory,
                     ref siEx,
@@ -288,18 +311,40 @@ namespace ATT_Wrapper.Services
 
                 Log.Information($"Started process PID: {pi.dwProcessId}");
 
+                // NOW close the pipe ends owned by pseudoconsole (after process is created)
+                CloseHandle(inputReadPipe);
+                CloseHandle(outputWritePipe);
+                Log.Information("Closed pseudoconsole-owned pipe ends");
+
+                Log.Information($"Input write handle: 0x{_inputWriteHandle.ToInt64():X}");
+                Log.Information($"Output read handle: 0x{_outputReadHandle.ToInt64():X}");
+
                 // Setup input writer using SafeFileHandle
                 _inputWriteSafeHandle = new SafeFileHandle(_inputWriteHandle, ownsHandle: true);
                 var inputStream = new FileStream(_inputWriteSafeHandle, FileAccess.Write, 4096, isAsync: false);
                 _inputWriter = new StreamWriter(inputStream, Encoding.UTF8) { AutoFlush = true };
+                Log.Information("Input writer created");
 
-                // Setup output reader using SafeFileHandle
+                // Setup output reader using SafeFileHandle - read as raw bytes to preserve ANSI codes
                 _outputReadSafeHandle = new SafeFileHandle(_outputReadHandle, ownsHandle: true);
                 var outputStream = new FileStream(_outputReadSafeHandle, FileAccess.Read, 4096, isAsync: false);
-                StreamReader reader = new StreamReader(outputStream, Encoding.UTF8);
+                Log.Information("Output stream created (synchronous mode)");
 
-                // Start reading output
-                Task.Run(() => ReadStreamAsync(reader));
+                // Test: Send a newline to trigger any initial output
+                try
+                    {
+                    _inputWriter.WriteLine();
+                    Log.Information("Sent initial newline to process");
+                    }
+                catch (Exception ex)
+                    {
+                    Log.Warning(ex, "Failed to send initial newline");
+                    }
+
+                // Start reading raw output (preserves all ANSI escape codes)
+                Log.Information("Starting output reader task");
+                var readTask = Task.Run(() => ReadRawStreamAsync(outputStream));
+                Log.Information($"Read task created, ID: {readTask.Id}, Status: {readTask.Status}");
 
                 // Watch for process exit
                 Task.Run(() =>
@@ -312,8 +357,10 @@ namespace ATT_Wrapper.Services
                 }
             catch
                 {
-                // Cleanup on error
+                // Cleanup on error - close any open handles
                 if (inputReadPipe != IntPtr.Zero) CloseHandle(inputReadPipe);
+                if (inputWritePipe != IntPtr.Zero) CloseHandle(inputWritePipe);
+                if (outputReadPipe != IntPtr.Zero) CloseHandle(outputReadPipe);
                 if (outputWritePipe != IntPtr.Zero) CloseHandle(outputWritePipe);
 
                 if (_hPc != IntPtr.Zero)
@@ -321,6 +368,9 @@ namespace ATT_Wrapper.Services
                     ClosePseudoConsole(_hPc);
                     _hPc = IntPtr.Zero;
                     }
+
+                _inputWriteHandle = IntPtr.Zero;
+                _outputReadHandle = IntPtr.Zero;
 
                 throw;
                 }
@@ -383,6 +433,140 @@ namespace ATT_Wrapper.Services
             catch (Exception ex)
                 {
                 Log.Error(ex, "Kill failed");
+                }
+            }
+
+        private async Task ReadRawStreamAsync(FileStream stream)
+            {
+            byte[] buffer = new byte[4096];
+            StringBuilder lineBuffer = new StringBuilder();
+
+            Log.Information("ReadRawStreamAsync started");
+            Log.Information($"Stream CanRead: {stream.CanRead}");
+            Log.Information($"Stream Handle: 0x{stream.SafeFileHandle.DangerousGetHandle().ToInt64():X}");
+
+            try
+                {
+                int readAttempts = 0;
+                while (true)
+                    {
+                    readAttempts++;
+                    Log.Debug($"Attempting to read (attempt #{readAttempts})...");
+
+                    // Use synchronous Read with timeout check
+                    var readTask = Task.Run(() =>
+                    {
+                        Log.Debug($"Read thread started, ThreadId: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+                        try
+                            {
+                            int result = stream.Read(buffer, 0, buffer.Length);
+                            Log.Debug($"Read returned: {result} bytes");
+                            return result;
+                            }
+                        catch (Exception ex)
+                            {
+                            Log.Error(ex, "Exception in Read");
+                            throw;
+                            }
+                    });
+
+                    // Wait for read with timeout to detect blocking
+                    if (await Task.WhenAny(readTask, Task.Delay(5000)) == readTask)
+                        {
+                        int bytesRead = await readTask;
+                        Log.Information($"Read completed: {bytesRead} bytes (attempt #{readAttempts})");
+
+                        if (bytesRead == 0)
+                            {
+                            Log.Information("Stream ended (0 bytes read)");
+                            break;
+                            }
+
+                        // Convert bytes to string preserving ANSI codes
+                        string content = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                        Log.Debug($"Converted to string: {content.Length} chars");
+
+                        // Log raw bytes
+                        StringBuilder hexDump = new StringBuilder();
+                        for (int i = 0; i < Math.Min(bytesRead, 100); i++)
+                            {
+                            hexDump.Append($"{buffer[i]:X2} ");
+                            }
+                        Log.Debug($"First bytes (hex): {hexDump}");
+
+                        // Log first 200 chars of raw content
+                        string preview = content.Length > 200 ? content.Substring(0, 200) + "..." : content;
+                        Log.Information($"Content preview: {preview}");
+
+                        lineBuffer.Append(content);
+
+                        // Process line by line, but keep ANSI codes intact
+                        string accumulated = lineBuffer.ToString();
+                        int splitIndex;
+                        char[] separators = { '\n', '\r' };
+
+                        while (( splitIndex = accumulated.IndexOfAny(separators) ) >= 0)
+                            {
+                            string line = accumulated.Substring(0, splitIndex);
+
+                            if (line.Length > 0)
+                                {
+                                Log.Debug($"Invoking OnOutputReceived with line ({line.Length} chars): {( line.Length > 100 ? line.Substring(0, 100) + "..." : line )}");
+                                OnOutputReceived?.Invoke(line);
+                                }
+
+                            int nextCharIdx = splitIndex + 1;
+                            if (nextCharIdx < accumulated.Length &&
+                                ( ( accumulated[splitIndex] == '\r' && accumulated[nextCharIdx] == '\n' ) ||
+                                 ( accumulated[splitIndex] == '\n' && accumulated[nextCharIdx] == '\r' ) ))
+                                {
+                                nextCharIdx++;
+                                }
+                            accumulated = accumulated.Substring(nextCharIdx);
+                            }
+
+                        lineBuffer.Clear();
+                        lineBuffer.Append(accumulated);
+                        }
+                    else
+                        {
+                        // Timeout - read is blocking
+                        Log.Warning($"Read is blocking (waited 5 seconds on attempt #{readAttempts})");
+                        Log.Warning("This suggests the process isn't producing any output to the pseudoconsole");
+
+                        // Check if process is still running
+                        if (_pi.hProcess != IntPtr.Zero)
+                            {
+                            uint exitCode;
+                            if (GetExitCodeProcess(_pi.hProcess, out exitCode))
+                                {
+                                if (exitCode == 259) // STILL_ACTIVE
+                                    {
+                                    Log.Warning("Process is still running but not producing output");
+                                    }
+                                else
+                                    {
+                                    Log.Warning($"Process has exited with code: {exitCode}");
+                                    }
+                                }
+                            }
+
+                        // Continue waiting (don't break, let it keep trying)
+                        }
+                    }
+
+                // Output any remaining content
+                if (lineBuffer.Length > 0)
+                    {
+                    Log.Debug($"Final output ({lineBuffer.Length} chars): {( lineBuffer.Length > 100 ? lineBuffer.ToString().Substring(0, 100) + "..." : lineBuffer.ToString() )}");
+                    OnOutputReceived?.Invoke(lineBuffer.ToString());
+                    }
+
+                Log.Information("ReadRawStreamAsync completed normally");
+                }
+            catch (Exception ex)
+                {
+                Log.Error(ex, "Stream read error in ReadRawStreamAsync");
                 }
             }
 
