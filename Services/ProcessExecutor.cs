@@ -75,6 +75,32 @@ namespace ATT_Wrapper.Services
         public void Kill()
             {
             Log.Information("[ProcessExecutor] Kill() called");
+
+            if (_process != null && _process.ProcessInfo.dwProcessId > 0)
+                {
+                try
+                    {
+                    // /F = Force (принудительно)
+                    // /T = Tree (убить процесс И всех его потомков/детей)
+                    // Это гарантирует, что если cmd.exe запустил python.exe, умрут ОБА.
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                        {
+                        FileName = "taskkill",
+                        Arguments = $"/F /T /PID {_process.ProcessInfo.dwProcessId}",
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                        };
+                    System.Diagnostics.Process.Start(psi)?.WaitForExit(2000); // Ждем до 2 секунд
+                    Log.Information($"[ProcessExecutor] Taskkill executed for PID: {_process.ProcessInfo.dwProcessId}");
+                    }
+                catch (Exception ex)
+                    {
+                    // Игнорируем ошибку, если процесс уже умер
+                    Log.Warning(ex, "[ProcessExecutor] Failed to execute taskkill (process might be already dead)");
+                    }
+                }
+
+            // После убийства чистим ресурсы
             Dispose();
             }
 

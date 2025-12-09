@@ -17,7 +17,7 @@ namespace ATT_Wrapper
         {
         private const string SCRIPT_PATH = @"C:\jatlas\scripts\win_scripts\";
 
-        private readonly ProcessExecutor _executor;
+        private ProcessExecutor _executor;
         private readonly ResultsGridController _gridController;
         private readonly MappingManager _mapper;
         private readonly string _mainLogPath;
@@ -82,6 +82,26 @@ namespace ATT_Wrapper
             Log.Information($"Log file: {_mainLogPath}");
             }
 
+        private void InitializeExecutor()
+            {
+            // Если старый существует - убиваем и очищаем
+            if (_executor != null)
+                {
+                try
+                    {
+                    _executor.OnOutputReceived -= HandleOutput;
+                    _executor.OnExited -= HandleExit;
+                    _executor.Dispose();
+                    }
+                catch { /* ignore */ }
+                }
+
+            // Создаем свежий экземпляр
+            _executor = new ProcessExecutor();
+            _executor.OnOutputReceived += HandleOutput;
+            _executor.OnExited += HandleExit;
+            }
+
         // --- RUN LOGIC ---
 
         private void RunTest(ILogParser parser, string script, string args)
@@ -95,6 +115,8 @@ namespace ATT_Wrapper
 
             // Dispose previous output handler if exists
             _outputHandler?.Dispose();
+
+            InitializeExecutor();
 
             Log.Information($"Creating output handler for script: {script}");
 
@@ -176,6 +198,15 @@ namespace ATT_Wrapper
                     .Replace("\r", "\\r")
                     .Replace("\n", "\\n")
                     .Replace("\x1b", "\\x1b");
+
+                if (escapedLine.Length > 200)
+                    {
+                    Log.Debug($"[HandleOutput] {escapedLine.Substring(0, 200)}...");
+                    }
+                else
+                    {
+                    Log.Debug($"[HandleOutput] {escapedLine}");
+                    }
 
                 if (escapedLine.Length > 200)
                     {
@@ -283,15 +314,20 @@ namespace ATT_Wrapper
             base.OnFormClosing(e);
             }
 
+
+
         private void testBtn_Click(object sender, EventArgs e)
             {
             Log.Information("=== ANSI COLOR TEST STARTED ===");
+
 
             // Reset UI
             ToggleButtons(false);
             rtbLog.Clear();
             _gridController.Clear();
             if (statusLabel != null) statusLabel.Text = "Running ANSI Test...";
+
+            InitializeExecutor();
 
             // Dispose previous handler
             _outputHandler?.Dispose();
