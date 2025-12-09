@@ -20,12 +20,10 @@ namespace ATT_Wrapper.Services
             grid.DefaultCellStyle.SelectionForeColor = Color.Black;
 
             // RichTextBox
-            rtb.BackColor = Color.FromArgb(30, 30, 30);
-            rtb.ForeColor = Color.Gainsboro;
-            rtb.Font = new Font("Consolas", 10F);
+            rtb.BackColor = Color.Black;
+            rtb.ForeColor = Color.White;
+            rtb.Font = new Font("Segoe UI", 10.5F);
             rtb.BorderStyle = BorderStyle.None;
-            rtb.WordWrap = false;
-            rtb.ScrollBars = RichTextBoxScrollBars.Both;
 
             // Buttons Recursive
             StyleControls(form);

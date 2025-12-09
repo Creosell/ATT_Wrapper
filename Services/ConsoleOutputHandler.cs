@@ -19,10 +19,6 @@ namespace ATT_Wrapper.Services
         // Buffer for accumulating incomplete lines
         private StringBuilder _lineBuffer = new StringBuilder();
 
-        // Colors and fonts
-        private readonly Color _defaultForeColor = Color.Gainsboro;
-        private readonly Color _defaultBackColor = Color.FromArgb(30, 30, 30);
-        private readonly Font _defaultFont = new Font("Consolas", 10F, FontStyle.Regular);
 
         // Improved Regex for ANSI CSI sequences
         private const string AnsiCsiRegex = @"\x1B\[[\x30-\x3F]*[\x20-\x2F]*[\x40-\x7E]";
@@ -53,31 +49,34 @@ namespace ATT_Wrapper.Services
             {
             if (string.IsNullOrEmpty(rawChunk)) return;
 
-            // 1. Log raw chunk to Serilog (goes to Debug output and main log file)
+            // 1. Логируем ВСЁ (чтобы в файле была полная история)
             LogRawChunk(rawChunk);
 
-            // 2. Output to UI
-            if (rtbLog.InvokeRequired)
+            // 2. Логика фильтрации для UI
+            // Убираем ANSI, чтобы проверить текст
+            string cleanText = Regex.Replace(rawChunk, AnsiAllRegex, "");
+
+            // Проверяем, начинается ли строка с "Running task"
+            bool isRunningTask = cleanText.TrimStart().StartsWith("Running task", StringComparison.OrdinalIgnoreCase);
+
+            // Если это НЕ "Running task" — выводим в RichTextBox
+            if (!isRunningTask)
                 {
-                rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, rawChunk)));
-                }
-            else
-                {
-                AppendTextToRichTextBox(rtbLog, rawChunk);
+                if (rtbLog.InvokeRequired)
+                    {
+                    rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, rawChunk)));
+                    }
+                else
+                    {
+                    AppendTextToRichTextBox(rtbLog, rawChunk);
+                    }
                 }
 
-            // 3. Buffer and check for pause/lines
+            // 3. Буфер и паузы (оставляем как есть, чтобы логика не ломалась)
             lock (_lineBuffer)
                 {
                 _lineBuffer.Append(rawChunk);
-
-                // Safety cap
-                if (_lineBuffer.Length > 20000)
-                    {
-                    Log.Warning("Line buffer exceeded 20000 chars, trimming...");
-                    _lineBuffer.Remove(0, 10000);
-                    }
-
+                if (_lineBuffer.Length > 20000) _lineBuffer.Remove(0, 10000);
                 CheckBufferForPauseOrLines();
                 }
             }
@@ -167,11 +166,11 @@ namespace ATT_Wrapper.Services
             {
             try
                 {
-                // Split text by ANSI codes
                 string[] parts = Regex.Split(text, $"({AnsiSplitRegex})");
 
-                Color currentForeColor = _defaultForeColor;
-                Color currentBackColor = _defaultBackColor;
+                // Use current ANSI settings or defaults
+                Color currentForeColor = box.ForeColor;
+                Color currentBackColor = box.BackColor;
                 FontStyle currentStyle = FontStyle.Regular;
 
                 foreach (string part in parts)
@@ -184,21 +183,15 @@ namespace ATT_Wrapper.Services
                         }
                     else
                         {
-                        // Check for keywords first (PASS/FAIL override ANSI colors)
-                        Color wordColor = GetKeywordColor(part);
-
-                        if (wordColor != _defaultForeColor)
-                            box.SelectionColor = wordColor;
-                        else
-                            box.SelectionColor = currentForeColor;
-
+                        box.SelectionColor = currentForeColor;
                         box.SelectionBackColor = currentBackColor;
-                        box.SelectionFont = new Font(_defaultFont, currentStyle);
+
+                        // CHANGE: Use the font defined in ThemeManager (box.Font), but apply calculated style (Bold/Italic)
+                        box.SelectionFont = new Font(box.Font.FontFamily, box.Font.Size, currentStyle);
 
                         box.AppendText(part);
                         }
                     }
-
                 box.ScrollToCaret();
                 }
             catch (Exception ex)
@@ -211,13 +204,17 @@ namespace ATT_Wrapper.Services
             {
             try
                 {
-                var match = Regex.Match(ansiSeq, @"\[([0-9;]+)([a-zA-Z])");
+                // ВАЖНО: Звездочка * вместо плюса +, чтобы ловить пустые параметры типа \x1b[m
+                var match = Regex.Match(ansiSeq, @"\[([0-9;]*)([a-zA-Z])");
                 if (!match.Success) return;
 
                 string command = match.Groups[2].Value;
-                if (command != "m") return; // Only handle SGR (Select Graphic Rendition)
+                if (command != "m") return;
 
-                string[] codes = match.Groups[1].Value.Split(';');
+                string paramString = match.Groups[1].Value;
+
+                // Пустая строка = сброс (0)
+                string[] codes = string.IsNullOrEmpty(paramString) ? new[] { "0" } : paramString.Split(';');
 
                 foreach (var codeStr in codes)
                     {
@@ -225,49 +222,53 @@ namespace ATT_Wrapper.Services
                         {
                         if (code == 0)
                             {
-                            currentForeColor = _defaultForeColor;
-                            currentBackColor = _defaultBackColor;
+                            currentForeColor = box.ForeColor;
+                            currentBackColor = box.BackColor;
                             currentStyle = FontStyle.Regular;
                             }
                         else if (code == 1) currentStyle |= FontStyle.Bold;
                         else if (code == 3) currentStyle |= FontStyle.Italic;
                         else if (code == 4) currentStyle |= FontStyle.Underline;
                         else if (code == 22) currentStyle &= ~FontStyle.Bold;
+                        // Цвета текста
                         else if (code >= 30 && code <= 37) currentForeColor = GetAnsiColor(code - 30, false);
-                        else if (code == 39) currentForeColor = _defaultForeColor;
+                        else if (code == 39) currentForeColor = box.ForeColor;
+                        // Цвета фона
                         else if (code >= 40 && code <= 47) currentBackColor = GetAnsiColor(code - 40, false);
-                        else if (code == 49) currentBackColor = _defaultBackColor;
+                        else if (code == 49) currentBackColor = box.BackColor;
+                        // Яркие цвета текста (AIXterm)
                         else if (code >= 90 && code <= 97) currentForeColor = GetAnsiColor(code - 90, true);
+                        // Яркие цвета фона
                         else if (code >= 100 && code <= 107) currentBackColor = GetAnsiColor(code - 100, true);
                         }
                     }
                 }
-            catch (Exception ex)
-                {
-                Log.Warning(ex, "Error applying ANSI code");
-                }
-            }
-
-        private Color GetKeywordColor(string text)
-            {
-            if (text.Contains("PASS")) return Color.LightGreen;
-            if (text.Contains("FAIL")) return Color.Salmon;
-            return _defaultForeColor;
+            catch { /* ignore */ }
             }
 
         private Color GetAnsiColor(int code, bool bright)
             {
+            // Схема "Campbell" (Modern Windows CMD) - отлично читается на черном
             switch (code)
                 {
-                case 0: return bright ? Color.DimGray : Color.Black;
-                case 1: return bright ? Color.Salmon : Color.Maroon;
-                case 2: return bright ? Color.Lime : Color.Green;
-                case 3: return bright ? Color.Yellow : Color.Olive;
-                case 4: return bright ? Color.DodgerBlue : Color.Navy;
-                case 5: return bright ? Color.Magenta : Color.Purple;
-                case 6: return bright ? Color.Cyan : Color.Teal;
-                case 7: return bright ? Color.White : Color.Silver;
-                default: return _defaultForeColor;
+                case 0: // Black
+                    return bright ? Color.FromArgb(118, 118, 118) : Color.Black;
+                case 1: // Red
+                    return bright ? Color.FromArgb(231, 72, 86) : Color.FromArgb(197, 15, 31);
+                case 2: // Green
+                    return bright ? Color.FromArgb(22, 198, 12) : Color.FromArgb(19, 161, 14);
+                case 3: // Yellow
+                    return bright ? Color.FromArgb(249, 241, 165) : Color.FromArgb(193, 156, 0);
+                case 4: // Blue (Сделал поярче, чем стандартный Navy)
+                    return bright ? Color.FromArgb(59, 120, 255) : Color.FromArgb(65, 105, 225);
+                case 5: // Magenta
+                    return bright ? Color.FromArgb(180, 0, 158) : Color.FromArgb(136, 23, 152);
+                case 6: // Cyan
+                    return bright ? Color.FromArgb(97, 214, 214) : Color.FromArgb(58, 150, 221);
+                case 7: // White
+                    return bright ? Color.White : Color.FromArgb(204, 204, 204);
+                default:
+                    return Color.White;
                 }
             }
 
