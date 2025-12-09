@@ -109,7 +109,6 @@ namespace ATT_Wrapper
             ToggleButtons(false);
             _gridController.Clear();
             rtbLog.Clear();
-            rtbLog.ForeColor = Color.Gainsboro;
 
             if (statusLabel != null) statusLabel.Text = "Initializing...";
 
