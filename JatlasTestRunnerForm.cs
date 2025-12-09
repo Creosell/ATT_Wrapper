@@ -192,40 +192,31 @@ namespace ATT_Wrapper
 
             try
                 {
-                // Log ALL raw output for debugging - escape control chars
-                string escapedLine = line
-                    .Replace("\r", "\\r")
-                    .Replace("\n", "\\n")
-                    .Replace("\x1b", "\\x1b");
+                //// Log ALL raw output for debugging - escape control chars
+                //string escapedLine = line
+                //    .Replace("\r", "\\r")
+                //    .Replace("\n", "\\n")
+                //    .Replace("\x1b", "\\x1b");
 
-                if (escapedLine.Length > 200)
-                    {
-                    Log.Debug($"[HandleOutput] {escapedLine.Substring(0, 200)}...");
-                    }
-                else
-                    {
-                    Log.Debug($"[HandleOutput] {escapedLine}");
-                    }
+                //if (escapedLine.Length > 200)
+                //    {
+                //    Log.Debug($"[HandleOutput] {escapedLine.Substring(0, 200)}...");
+                //    }
+                //else
+                //    {
+                //    Log.Debug($"[HandleOutput] {escapedLine}");
+                //    }
 
-                if (escapedLine.Length > 200)
-                    {
-                    Log.Debug($"[HandleOutput] {escapedLine.Substring(0, 200)}...");
-                    }
-                else
-                    {
-                    Log.Debug($"[HandleOutput] {escapedLine}");
-                    }
+                //// 1. Output to Debug (VS Output window) - clean text without noise
+                //string plainLine = Regex.Replace(line, AnsiRegex, "");
+                //bool isProgress = plainLine.TrimStart().StartsWith("Running task:", StringComparison.OrdinalIgnoreCase);
+                //bool isInfo = plainLine.Contains("INFO");
 
-                // 1. Output to Debug (VS Output window) - clean text without noise
-                string plainLine = Regex.Replace(line, AnsiRegex, "");
-                bool isProgress = plainLine.TrimStart().StartsWith("Running task:", StringComparison.OrdinalIgnoreCase);
-                bool isInfo = plainLine.Contains("INFO");
-
-                if (!isProgress && !isInfo && !string.IsNullOrWhiteSpace(plainLine))
-                    {
-                    // Теперь здесь будет видно [JatlasTestRunnerForm.HandleOutput] в логах
-                    Log.Information($"[CONSOLE] {plainLine}");
-                    }
+                //if (!isProgress && !isInfo && !string.IsNullOrWhiteSpace(plainLine))
+                //    {
+                //    // Теперь здесь будет видно [JatlasTestRunnerForm.HandleOutput] в логах
+                //    Log.Information($"[CONSOLE] {plainLine}");
+                //    }
 
                 // 2. Process logic (GUI, Parsing)
                 if (_outputHandler != null)

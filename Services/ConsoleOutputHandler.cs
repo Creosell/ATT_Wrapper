@@ -21,7 +21,6 @@ namespace ATT_Wrapper.Services
 
 
         // Improved Regex for ANSI CSI sequences
-        private const string AnsiCsiRegex = @"\x1B\[[\x30-\x3F]*[\x20-\x2F]*[\x40-\x7E]";
         private const string AnsiSplitRegex = @"\x1B\[[0-9;?]*[ -/]*[@-~]";
         private const string AnsiAllRegex = @"(\x1B\[[\x30-\x3F]*[\x20-\x2F]*[\x40-\x7E]|\x1B\][^\x07\x1B]*(\x07|\x1B\\)|\x1B[PX^_].*?(\x07|\x1B\\))";
 
@@ -49,30 +48,93 @@ namespace ATT_Wrapper.Services
             {
             if (string.IsNullOrEmpty(rawChunk)) return;
 
-            // 1. Логируем ВСЁ (чтобы в файле была полная история)
+            // 1. Log everything to file
             LogRawChunk(rawChunk);
 
-            // 2. Логика фильтрации для UI
-            // Убираем ANSI, чтобы проверить текст
-            string cleanText = Regex.Replace(rawChunk, AnsiAllRegex, "");
+            // 2. UI Filtering Logic
 
-            // Проверяем, начинается ли строка с "Running task"
-            bool isRunningTask = cleanText.TrimStart().StartsWith("Running task", StringComparison.OrdinalIgnoreCase);
+            // Pre-process ANSI: handle cursor movements to prevent text gluing
+            string preProcessedChunk = rawChunk.Replace("\x1b[1C", " ");
 
-            // Если это НЕ "Running task" — выводим в RichTextBox
-            if (!isRunningTask)
+            // Force newline if chunk is just newlines (fixes glue between Summary and next output)
+            if (string.IsNullOrWhiteSpace(preProcessedChunk) && preProcessedChunk.Contains("\n"))
                 {
                 if (rtbLog.InvokeRequired)
-                    {
-                    rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, rawChunk)));
-                    }
+                    rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, "\n")));
                 else
+                    AppendTextToRichTextBox(rtbLog, "\n");
+
+                // Update buffer for pause detection even if UI is skipped
+                lock (_lineBuffer)
                     {
-                    AppendTextToRichTextBox(rtbLog, rawChunk);
+                    _lineBuffer.Append(rawChunk);
+                    if (_lineBuffer.Length > 20000) _lineBuffer.Remove(0, 10000);
+                    CheckBufferForPauseOrLines();
+                    }
+                return;
+                }
+
+            var lines = preProcessedChunk.Split(new[] { '\n' }, StringSplitOptions.None);
+            var sbUi = new StringBuilder();
+
+            for (int i = 0; i < lines.Length; i++)
+                {
+                string line = lines[i];
+
+                // Filter 1: Remove "Press any key" prompt completely from UI
+                // (Buffer still gets the raw data, so auto-enter works)
+                line = Regex.Replace(line, @"Press any key to continue( \. \. \.)?", "", RegexOptions.IgnoreCase);
+
+                // Clean ANSI and whitespace to check content logic
+                string cleanLine = Regex.Replace(line, AnsiAllRegex, "");
+                string trimmedLine = cleanLine.Trim();
+
+                // Filter 2: Skip "Running task" updates
+                if (trimmedLine.StartsWith("Running task", StringComparison.OrdinalIgnoreCase)) continue;
+
+                // Filter 3: Skip empty lines (unless part of a formatted block logic handled later)
+                if (string.IsNullOrWhiteSpace(trimmedLine))
+                    {
+                    // If the line became empty because we removed "Press any key", just skip it
+                    continue;
+                    }
+
+                // Filter 4: Skip CMD title artifacts
+                if (trimmedLine.Contains("]0;") && trimmedLine.Contains("cmd.exe")) continue;
+
+                // Content Processing: Remove Carriage Return
+                string lineToAppend = line.Replace("\r", "");
+
+                sbUi.Append(lineToAppend);
+
+                // Add newline if it existed in original source (not last element)
+                if (i < lines.Length - 1)
+                    {
+                    sbUi.Append('\n');
                     }
                 }
 
-            // 3. Буфер и паузы (оставляем как есть, чтобы логика не ломалась)
+            string textForUi = sbUi.ToString();
+
+            // Fix: Add trailing newline if raw chunk had one but split logic ate it
+            if (( rawChunk.EndsWith("\n") || rawChunk.EndsWith("\r") ) && !textForUi.EndsWith("\n") && textForUi.Length > 0)
+                {
+                textForUi += "\n";
+                }
+
+            if (!string.IsNullOrEmpty(textForUi))
+                {
+                if (rtbLog.InvokeRequired)
+                    {
+                    rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, textForUi)));
+                    }
+                else
+                    {
+                    AppendTextToRichTextBox(rtbLog, textForUi);
+                    }
+                }
+
+            // 3. Buffer logic (unchanged - auto-enter still works)
             lock (_lineBuffer)
                 {
                 _lineBuffer.Append(rawChunk);
