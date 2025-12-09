@@ -5,25 +5,21 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
+using Serilog;
 
 namespace ATT_Wrapper.Services
     {
-    /// <summary>
-    /// Основной класс для управления headless-терминалом.
-    /// Объединяет логику HeadlessRunner, ProcessFactory и управления пайпами.
-    /// </summary>
     public sealed class ProcessExecutor : IDisposable
         {
         private PseudoConsolePipe _inputPipe;
         private PseudoConsolePipe _outputPipe;
         private PseudoConsole _pseudoConsole;
         private Process _process;
-        private StreamWriter _inputWriter;
+        private FileStream _inputStream;
         private Task _outputTask;
         private Task _exitWaitTask;
         private CancellationTokenSource _cancellationTokenSource;
 
-        // События
         public event Action<string> OnOutputReceived;
         public event EventHandler OnExited;
 
@@ -32,95 +28,115 @@ namespace ATT_Wrapper.Services
             _cancellationTokenSource = new CancellationTokenSource();
             }
 
-        /// <summary>
-        /// Запускает указанную команду в псевдоконсоли.
-        /// </summary>
         public void Start(string command)
             {
             if (_process != null)
                 throw new InvalidOperationException("Process is already running.");
 
-            // 1. Создаем пайпы
+            Log.Information($"[ProcessExecutor] Starting: {command}");
+
+            // 1. Create pipes
             _inputPipe = new PseudoConsolePipe();
             _outputPipe = new PseudoConsolePipe();
 
-            // 2. Создаем псевдоконсоль (размер 80x25, как в оригинальном HeadlessRunner)
-            _pseudoConsole = PseudoConsole.Create(_inputPipe.ReadSide, _outputPipe.WriteSide, 80, 25);
+            // 2. Create pseudoconsole
+            _pseudoConsole = PseudoConsole.Create(_inputPipe.ReadSide, _outputPipe.WriteSide, 120, 40);
 
-            // 3. Запускаем процесс
+            // 3. Start process
             _process = ProcessFactory.Start(command, PseudoConsole.PseudoConsoleThreadAttribute, _pseudoConsole.Handle);
+            Log.Information($"[ProcessExecutor] Process started, PID: {_process.ProcessInfo.dwProcessId}");
 
-            // 4. Настраиваем отправку ввода (SendInput)
-            // Создаем StreamWriter для записи в _inputPipe.WriteSide
-            var fsInput = new FileStream(_inputPipe.WriteSide, FileAccess.Write);
-            _inputWriter = new StreamWriter(fsInput, Encoding.UTF8) { AutoFlush = true };
+            // 4. Setup input stream (for SendInput)
+            _inputStream = new FileStream(_inputPipe.WriteSide, FileAccess.Write);
 
-            // 5. Запускаем чтение вывода (OnOutputReceived)
+            // 5. Start reading output - CRITICAL: Read raw bytes to avoid buffering
             _outputTask = Task.Run(() => ReadOutputLoop(_outputPipe.ReadSide, _cancellationTokenSource.Token));
 
-            // 6. Запускаем ожидание завершения процесса (OnExited)
+            // 6. Start waiting for exit
             _exitWaitTask = Task.Run(() => WaitForExitLoop(_process));
             }
 
-        /// <summary>
-        /// Отправляет текст в стандартный ввод терминала.
-        /// </summary>
         public void SendInput(string input)
             {
-            if (_inputWriter == null) return;
+            if (_inputStream == null) return;
             try
                 {
-                _inputWriter.Write(input);
+                byte[] bytes = Encoding.UTF8.GetBytes(input);
+                _inputStream.Write(bytes, 0, bytes.Length);
+                _inputStream.Flush();
+                Log.Debug($"[ProcessExecutor] Sent: {input.Replace("\r", "\\r").Replace("\n", "\\n")}");
                 }
             catch (Exception ex)
                 {
-                // Игнорируем ошибки записи, если процесс уже умер
-                System.Diagnostics.Debug.WriteLine($"[SendInput Error] {ex.Message}");
+                Log.Warning(ex, "[ProcessExecutor] SendInput error");
                 }
             }
 
-        /// <summary>
-        /// Принудительно завершает процесс.
-        /// </summary>
         public void Kill()
             {
-            // В оригинальном API не было TerminateProcess, но закрытие псевдоконсоли (Dispose)
-            // убивает прикрепленный к ней процесс.
+            Log.Information("[ProcessExecutor] Kill() called");
             Dispose();
             }
 
+        // CRITICAL FIX: Read raw bytes without StreamReader to avoid buffering
         private void ReadOutputLoop(SafeFileHandle outputReadSide, CancellationToken token)
             {
+            Log.Debug("[ProcessExecutor] ReadOutputLoop started");
+
+            // Use FileStream directly - NO StreamReader!
             using (var fs = new FileStream(outputReadSide, FileAccess.Read))
-            using (var reader = new StreamReader(fs, Encoding.UTF8))
                 {
                 try
                     {
-                    char[] buffer = new char[1024];
+                    byte[] buffer = new byte[4096];
                     while (!token.IsCancellationRequested)
                         {
-                        // Читаем синхронно
-                        int bytesRead = reader.Read(buffer, 0, buffer.Length);
+                        // Read bytes directly - this avoids StreamReader buffering
+                        int bytesRead = fs.Read(buffer, 0, buffer.Length);
 
-                        // Если 0 - значит пайп закрыт
-                        if (bytesRead == 0) break;
+                        if (bytesRead == 0)
+                            {
+                            Log.Debug("[ProcessExecutor] Pipe closed");
+                            break;
+                            }
 
-                        string data = new string(buffer, 0, bytesRead);
+                        // Convert to string
+                        string data = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+                        // Log it
+                        string logData = data.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\x1b", "\\x1b");
+                        if (logData.Length > 300)
+                            {
+                            Log.Debug($"[ProcessExecutor] Read {bytesRead} bytes: {logData.Substring(0, 300)}...");
+                            }
+                        else
+                            {
+                            Log.Debug($"[ProcessExecutor] Read {bytesRead} bytes: {logData}");
+                            }
+
+                        // Fire event
                         OnOutputReceived?.Invoke(data);
                         }
                     }
-                catch (IOException) { /* Pipe broken */ }
-                catch (ObjectDisposedException) { /* Stream closed */ }
+                catch (IOException ex)
+                    {
+                    Log.Debug(ex, "[ProcessExecutor] Pipe broken");
+                    }
+                catch (ObjectDisposedException)
+                    {
+                    Log.Debug("[ProcessExecutor] Stream disposed");
+                    }
                 catch (Exception ex)
                     {
-                    System.Diagnostics.Debug.WriteLine($"[ReadOutput Error] {ex.Message}");
+                    Log.Error(ex, "[ProcessExecutor] ReadOutput error");
                     }
                 }
+
+            Log.Debug("[ProcessExecutor] ReadOutputLoop finished");
             }
 
         private void WaitForExitLoop(Process process)
             {
-            // Ждем завершения процесса
             using (var waitHandle = new AutoResetEvent(false)
                 {
                 SafeWaitHandle = new SafeWaitHandle(process.ProcessInfo.hProcess, ownsHandle: false)
@@ -129,28 +145,25 @@ namespace ATT_Wrapper.Services
                 waitHandle.WaitOne();
                 }
 
+            Log.Information("[ProcessExecutor] Process exited");
             OnExited?.Invoke(this, EventArgs.Empty);
-
-            // После завершения процесса очищаем ресурсы (но не полностью Dispose, чтобы можно было прочитать остатки логов)
             }
 
         public void Dispose()
             {
+            Log.Debug("[ProcessExecutor] Dispose");
+
             _cancellationTokenSource?.Cancel();
 
-            // Закрываем writer ввода
-            _inputWriter?.Dispose();
-            _inputWriter = null;
+            _inputStream?.Dispose();
+            _inputStream = null;
 
-            // Освобождаем процесс (это закроет хендлы процесса)
             _process?.Dispose();
             _process = null;
 
-            // Освобождаем псевдоконсоль (это убьет ConHost и cmd.exe, если они еще живы)
             _pseudoConsole?.Dispose();
             _pseudoConsole = null;
 
-            // Закрываем пайпы
             _inputPipe?.Dispose();
             _inputPipe = null;
 
@@ -159,17 +172,11 @@ namespace ATT_Wrapper.Services
             }
         }
 
-    // ==================================================================================
-    // НИЖЕ РАСПОЛОЖЕНЫ ВСЕ ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ ИЗ ВАШИХ ФАЙЛОВ (БЕЗ ИЗМЕНЕНИЙ ЛОГИКИ)
-    // ==================================================================================
+    // Supporting classes below (unchanged)
 
-    /// <summary>
-    /// Utility functions around the new Pseudo Console APIs
-    /// </summary>
     internal sealed class PseudoConsole : IDisposable
         {
         public static readonly IntPtr PseudoConsoleThreadAttribute = (IntPtr)Native.PseudoConsoleApi.PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE;
-
         public IntPtr Handle { get; }
 
         private PseudoConsole(IntPtr handle)
@@ -294,8 +301,12 @@ namespace ATT_Wrapper.Services
             startupInfo.StartupInfo.cb = Marshal.SizeOf<Native.ProcessApi.STARTUPINFOEX>();
             startupInfo.lpAttributeList = Marshal.AllocHGlobal(lpSize);
 
-            startupInfo.StartupInfo.dwFlags = (int)Native.ProcessApi.STARTF_USESHOWWINDOW;
+            startupInfo.StartupInfo.dwFlags = (int)( Native.ProcessApi.STARTF_USESHOWWINDOW | Native.ProcessApi.STARTF_USESTDHANDLES );
             startupInfo.StartupInfo.wShowWindow = Native.ProcessApi.SW_HIDE;
+
+            startupInfo.StartupInfo.hStdInput = IntPtr.Zero;
+            startupInfo.StartupInfo.hStdOutput = IntPtr.Zero;
+            startupInfo.StartupInfo.hStdError = IntPtr.Zero;
 
             success = Native.ProcessApi.InitializeProcThreadAttributeList(startupInfo.lpAttributeList, 1, 0, ref lpSize);
             if (!success) throw new InvalidOperationException("Could not set up attribute list.");
@@ -401,6 +412,7 @@ namespace ATT_Wrapper.Services
             {
             internal const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
             internal const uint STARTF_USESHOWWINDOW = 0x00000001;
+            internal const uint STARTF_USESTDHANDLES = 0x00000100;
             internal const short SW_HIDE = 0;
 
             [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -461,7 +473,7 @@ namespace ATT_Wrapper.Services
                 IntPtr lpAttributeList, uint dwFlags, IntPtr attribute, IntPtr lpValue,
                 IntPtr cbSize, IntPtr lpPreviousValue, IntPtr lpReturnSize);
 
-            [DllImport("kernel32.dll")]
+            [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
             internal static extern bool CreateProcess(
                 string lpApplicationName, string lpCommandLine, ref SECURITY_ATTRIBUTES lpProcessAttributes,

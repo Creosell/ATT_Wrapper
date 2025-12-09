@@ -46,6 +46,8 @@
             this.mainButtonsLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.dev = new System.Windows.Forms.TabPage();
             this.mainLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.testBtn = new System.Windows.Forms.Button();
+            this.button1 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).BeginInit();
             this.statusStrip1.SuspendLayout();
             this.tabControlOutput.SuspendLayout();
@@ -122,7 +124,7 @@
             this.dgvResults.RowHeadersWidth = 51;
             this.dgvResults.RowTemplate.Height = 24;
             this.dgvResults.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvResults.Size = new System.Drawing.Size(567, 480);
+            this.dgvResults.Size = new System.Drawing.Size(684, 581);
             this.dgvResults.TabIndex = 1;
             // 
             // statusStrip1
@@ -131,9 +133,9 @@
             this.statusStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.statusLabel});
-            this.statusStrip1.Location = new System.Drawing.Point(0, 528);
+            this.statusStrip1.Location = new System.Drawing.Point(0, 634);
             this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(782, 24);
+            this.statusStrip1.Size = new System.Drawing.Size(938, 29);
             this.statusStrip1.TabIndex = 2;
             this.statusStrip1.Text = "statusStrip1";
             // 
@@ -141,7 +143,7 @@
             // 
             this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Size = new System.Drawing.Size(56, 18);
+            this.statusLabel.Size = new System.Drawing.Size(56, 23);
             this.statusLabel.Text = "Status";
             // 
             // tabControlOutput
@@ -150,10 +152,10 @@
             this.tabControlOutput.Controls.Add(this.tabExpert);
             this.tabControlOutput.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControlOutput.Font = new System.Drawing.Font("Segoe UI", 12F);
-            this.tabControlOutput.Location = new System.Drawing.Point(198, 3);
+            this.tabControlOutput.Location = new System.Drawing.Point(237, 3);
             this.tabControlOutput.Name = "tabControlOutput";
             this.tabControlOutput.SelectedIndex = 0;
-            this.tabControlOutput.Size = new System.Drawing.Size(581, 527);
+            this.tabControlOutput.Size = new System.Drawing.Size(698, 628);
             this.tabControlOutput.TabIndex = 3;
             // 
             // tabSimple
@@ -162,7 +164,7 @@
             this.tabSimple.Location = new System.Drawing.Point(4, 37);
             this.tabSimple.Name = "tabSimple";
             this.tabSimple.Padding = new System.Windows.Forms.Padding(3);
-            this.tabSimple.Size = new System.Drawing.Size(573, 486);
+            this.tabSimple.Size = new System.Drawing.Size(690, 587);
             this.tabSimple.TabIndex = 0;
             this.tabSimple.Text = "Simple";
             this.tabSimple.UseVisualStyleBackColor = true;
@@ -173,7 +175,7 @@
             this.tabExpert.Location = new System.Drawing.Point(4, 37);
             this.tabExpert.Name = "tabExpert";
             this.tabExpert.Padding = new System.Windows.Forms.Padding(3);
-            this.tabExpert.Size = new System.Drawing.Size(723, 677);
+            this.tabExpert.Size = new System.Drawing.Size(573, 486);
             this.tabExpert.TabIndex = 1;
             this.tabExpert.Text = "Expert";
             this.tabExpert.UseVisualStyleBackColor = true;
@@ -186,7 +188,7 @@
             this.rtbLog.Location = new System.Drawing.Point(3, 3);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(717, 671);
+            this.rtbLog.Size = new System.Drawing.Size(567, 480);
             this.rtbLog.TabIndex = 0;
             this.rtbLog.Text = "";
             // 
@@ -199,7 +201,7 @@
             this.tabControlActions.Location = new System.Drawing.Point(3, 3);
             this.tabControlActions.Name = "tabControlActions";
             this.tabControlActions.SelectedIndex = 0;
-            this.tabControlActions.Size = new System.Drawing.Size(189, 527);
+            this.tabControlActions.Size = new System.Drawing.Size(228, 628);
             this.tabControlActions.TabIndex = 4;
             // 
             // main
@@ -208,7 +210,7 @@
             this.main.Location = new System.Drawing.Point(4, 34);
             this.main.Name = "main";
             this.main.Padding = new System.Windows.Forms.Padding(3);
-            this.main.Size = new System.Drawing.Size(181, 489);
+            this.main.Size = new System.Drawing.Size(220, 590);
             this.main.TabIndex = 0;
             this.main.Text = "Main";
             this.main.UseVisualStyleBackColor = true;
@@ -220,11 +222,13 @@
             this.mainButtonsLayoutPanel.Controls.Add(this.btnSpecial);
             this.mainButtonsLayoutPanel.Controls.Add(this.btnCommonOffline);
             this.mainButtonsLayoutPanel.Controls.Add(this.taskKillBtn);
+            this.mainButtonsLayoutPanel.Controls.Add(this.testBtn);
+            this.mainButtonsLayoutPanel.Controls.Add(this.button1);
             this.mainButtonsLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.mainButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.mainButtonsLayoutPanel.Name = "mainButtonsLayoutPanel";
-            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(175, 483);
+            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(214, 584);
             this.mainButtonsLayoutPanel.TabIndex = 9;
             // 
             // dev
@@ -232,7 +236,7 @@
             this.dev.Location = new System.Drawing.Point(4, 34);
             this.dev.Name = "dev";
             this.dev.Padding = new System.Windows.Forms.Padding(3);
-            this.dev.Size = new System.Drawing.Size(231, 680);
+            this.dev.Size = new System.Drawing.Size(181, 489);
             this.dev.TabIndex = 1;
             this.dev.Text = "Dev";
             this.dev.UseVisualStyleBackColor = true;
@@ -249,8 +253,27 @@
             this.mainLayoutPanel.Name = "mainLayoutPanel";
             this.mainLayoutPanel.RowCount = 1;
             this.mainLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.mainLayoutPanel.Size = new System.Drawing.Size(782, 533);
+            this.mainLayoutPanel.Size = new System.Drawing.Size(938, 634);
             this.mainLayoutPanel.TabIndex = 5;
+            // 
+            // testBtn
+            // 
+            this.testBtn.Location = new System.Drawing.Point(3, 283);
+            this.testBtn.Name = "testBtn";
+            this.testBtn.Size = new System.Drawing.Size(150, 67);
+            this.testBtn.TabIndex = 9;
+            this.testBtn.Text = "Test";
+            this.testBtn.UseVisualStyleBackColor = true;
+            this.testBtn.Click += new System.EventHandler(this.testBtn_Click);
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(3, 356);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(8, 8);
+            this.button1.TabIndex = 10;
+            this.button1.Text = "button1";
+            this.button1.UseVisualStyleBackColor = true;
             // 
             // JatlasTestRunnerForm
             // 
@@ -296,5 +319,7 @@
         private System.Windows.Forms.TabPage dev;
         private System.Windows.Forms.TableLayoutPanel mainLayoutPanel;
         private System.Windows.Forms.FlowLayoutPanel mainButtonsLayoutPanel;
+        private System.Windows.Forms.Button testBtn;
+        private System.Windows.Forms.Button button1;
         }
     }
