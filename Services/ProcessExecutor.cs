@@ -40,7 +40,7 @@ namespace ATT_Wrapper.Services
             _outputPipe = new PseudoConsolePipe();
 
             // 2. Create pseudoconsole
-            _pseudoConsole = PseudoConsole.Create(_inputPipe.ReadSide, _outputPipe.WriteSide, 120, 40);
+            _pseudoConsole = PseudoConsole.Create(_inputPipe.ReadSide, _outputPipe.WriteSide, 300, 40);
 
             // 3. Start process
             _process = ProcessFactory.Start(command, PseudoConsole.PseudoConsoleThreadAttribute, _pseudoConsole.Handle);
