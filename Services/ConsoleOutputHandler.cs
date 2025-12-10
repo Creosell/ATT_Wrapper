@@ -2,7 +2,6 @@
 using Serilog;
 using System;
 using System.Drawing;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -245,12 +244,12 @@ namespace ATT_Wrapper.Services
                 lineForUi = lineForUi.Replace("\x1B[K", "");
                 lineForUi = WindowTitleRegex.Replace(lineForUi, "");
 
-                // Add visual space after FAIL
-                string cleanCheck = AnsiAllRegex.Replace(lineForUi, "");
-                if (cleanCheck.Contains("FAIL"))
-                    {
-                    lineForUi = Regex.Replace(lineForUi, @"(FAIL)(\S)", "$1  $2");
-                    }
+                //// Add visual space after FAIL
+                //string cleanCheck = AnsiAllRegex.Replace(lineForUi, "");
+                //if (cleanCheck.Contains("FAIL"))
+                //    {
+                //    lineForUi = Regex.Replace(lineForUi, @"(FAIL)(\S)", "$1  $2");
+                //    }
 
                 string cleanedForCheck = AnsiAllRegex.Replace(lineForUi, "");
 

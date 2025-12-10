@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Microsoft.Win32.SafeHandles;
+using Serilog;
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Win32.SafeHandles;
-using Serilog;
 
 namespace ATT_Wrapper.Services
     {
