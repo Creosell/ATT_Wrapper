@@ -16,18 +16,18 @@ namespace ATT_Wrapper.Services
         private readonly Action<string> _statusCallback;
         private readonly Action _enterCallback;
 
-        // Thread-safe buffer for incomplete lines
         private readonly StringBuilder _lineBuffer = new StringBuilder();
         private readonly object _bufferLock = new object();
 
-        // Optimized Regex: Compiled for performance
         private static readonly Regex AnsiSplitRegex = new Regex(@"(\x1B\[[0-9;?]*[ -/]*[@-~])", RegexOptions.Compiled);
         private static readonly Regex AnsiAllRegex = new Regex(@"(\x1B\[[\x30-\x3F]*[\x20-\x2F]*[\x40-\x7E]|\x1B\][^\x07\x1B]*(\x07|\x1B\\)|\x1B[PX^_].*?(\x07|\x1B\\))", RegexOptions.Compiled);
         private static readonly Regex PausePromptRegex = new Regex(@"(Press any key|Press Enter|any key to continue)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex UiCleanerRegex = new Regex(@"Press any key to continue( \. \. \.)?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        // Ловит возврат каретки (\r) и ANSI-коды перемещения курсора (H - позиция)
+
+        // Catches carriage return (\r) and cursor position (H)
         private static readonly Regex LineResetRegex = new Regex(@"(\r|\x1B\[\d+;\d+[Hf]|\x1B\[\d+[Hf])", RegexOptions.Compiled);
-        // Matches OSC 0 sequences (Window Title): ESC ] 0 ; ... BEL
+
+        // Matches OSC 0 sequences (Window Title)
         private static readonly Regex WindowTitleRegex = new Regex(@"\x1B\]0;.*?\x07", RegexOptions.Compiled);
         private static readonly Regex CursorForwardRegex = new Regex(@"\x1B\[(\d*)C", RegexOptions.Compiled);
 
@@ -57,7 +57,7 @@ namespace ATT_Wrapper.Services
                 {
                 _lineBuffer.Append(rawChunk);
 
-                // Защита от переполнения буфера (если \n долго не приходит)
+                // Buffer overflow protection
                 if (_lineBuffer.Length > 50000)
                     {
                     Log.Warning("[ConsoleOutputHandler] Buffer overflow. Force flush.");
@@ -66,14 +66,13 @@ namespace ATT_Wrapper.Services
                     }
                 else
                     {
-                    // Пытаемся извлечь полные строки, схлопывая анимации
+                    // Extract complete lines, squashing animations
                     linesToPrint = ExtractCompleteLinesLocked();
                     }
 
                 CheckBufferForPauseLocked();
                 }
 
-            // Обновляем UI, если есть готовые строки
             if (!string.IsNullOrEmpty(linesToPrint))
                 {
                 UpdateUi(linesToPrint, rtbLog);
@@ -84,7 +83,6 @@ namespace ATT_Wrapper.Services
             {
             string currentBuffer = _lineBuffer.ToString();
 
-            // Если нет новой строки, выходим и ждем следующий чанк
             if (currentBuffer.IndexOf('\n') == -1) return null;
 
             var sbFinalOutput = new StringBuilder();
@@ -94,21 +92,18 @@ namespace ATT_Wrapper.Services
                 {
                 if (currentBuffer[i] == '\n')
                     {
-                    // Извлекаем "сырую" строку от последнего \n до текущего
-                    // (currentBuffer[i] это \n, поэтому длина = i - lastNewlineIndex - 1)
+                    // Extract raw line between newlines
                     int startIndex = lastNewlineIndex + 1;
                     int length = i - startIndex;
 
                     string rawLine = currentBuffer.Substring(startIndex, length);
 
-                    // ГЛАВНОЕ: Превращаем "Loading...[CR]Done" -> "Done"
+                    // Collapse "Loading...[CR]Done" -> "Done"
                     string collapsedLine = GetFinalLineState(rawLine);
 
                     if (!string.IsNullOrEmpty(collapsedLine))
                         {
                         sbFinalOutput.Append(collapsedLine).Append('\n');
-
-                        // Отправляем в парсер (для таблицы результатов) чистую версию
                         ParseCleanLine(collapsedLine);
                         }
 
@@ -116,7 +111,7 @@ namespace ATT_Wrapper.Services
                     }
                 }
 
-            // Удаляем из буфера всё, что успешно обработали (включая последний \n)
+            // Remove processed lines
             if (lastNewlineIndex != -1)
                 {
                 _lineBuffer.Remove(0, lastNewlineIndex + 1);
@@ -129,35 +124,31 @@ namespace ATT_Wrapper.Services
             {
             if (string.IsNullOrEmpty(rawLine)) return rawLine;
 
-            // Убираем \r в конце, если он прилип к \n
+            // Trim trailing \r stuck to \n
             string trimmed = rawLine.TrimEnd('\r');
 
-            // Если в строке нет управляющих символов перезаписи, возвращаем как есть
             if (!LineResetRegex.IsMatch(trimmed)) return trimmed;
 
-            // Разбиваем строку по кадрам (\r или коды курсора)
+            // Split by frame delimiters (\r or cursor codes)
             string[] frames = LineResetRegex.Split(trimmed);
 
-            // Collect ANSI codes from all frames and apply them to the final frame
             StringBuilder ansiPrefix = new StringBuilder();
             string finalContent = null;
 
+            // Process frames backwards to find final content and accumulate ANSI codes
             for (int i = frames.Length - 1; i >= 0; i--)
                 {
                 string frame = frames[i];
 
-                // Skip the reset characters themselves (empty strings from split)
                 if (string.IsNullOrEmpty(frame)) continue;
 
-                // If we haven't found content yet, check if this frame has content
                 if (finalContent == null && !IsJustAnsiOrEmpty(frame))
                     {
                     finalContent = frame;
-                    // Continue to collect ANSI codes from previous frames
                     }
                 else if (finalContent != null)
                     {
-                    // Collect ANSI codes from earlier frames
+                    // Collect ANSI codes from overwritten frames
                     var ansiCodes = ExtractAnsiCodes(frame);
                     if (!string.IsNullOrEmpty(ansiCodes))
                         {
@@ -166,7 +157,6 @@ namespace ATT_Wrapper.Services
                     }
                 }
 
-            // If we found content, prepend the ANSI codes
             if (finalContent != null && ansiPrefix.Length > 0)
                 {
                 return ansiPrefix.ToString() + finalContent;
@@ -179,7 +169,6 @@ namespace ATT_Wrapper.Services
             {
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
-            // Extract all ANSI codes from the text
             var matches = AnsiAllRegex.Matches(text);
             if (matches.Count == 0) return string.Empty;
 
@@ -194,14 +183,13 @@ namespace ATT_Wrapper.Services
         private bool IsJustAnsiOrEmpty(string text)
             {
             if (string.IsNullOrEmpty(text)) return true;
-            // Удаляем цвета и проверяем, остался ли текст
+            // Remove ANSI to check for real text
             string clean = AnsiAllRegex.Replace(text, "").Replace("\r", "").Trim();
             return string.IsNullOrEmpty(clean);
             }
 
         private void ParseCleanLine(string lineWithColors)
             {
-            // Очищаем от цветов перед отправкой в логику парсера
             string cleanLine = AnsiAllRegex.Replace(lineWithColors, "").Trim();
             if (!string.IsNullOrWhiteSpace(cleanLine))
                 {
@@ -212,7 +200,7 @@ namespace ATT_Wrapper.Services
                         (progMsg) => _statusCallback?.Invoke(progMsg)
                     );
                     }
-                catch { /* Игнорируем ошибки парсинга */ }
+                catch { /* Ignore parsing errors */ }
                 }
             }
 
@@ -220,7 +208,7 @@ namespace ATT_Wrapper.Services
             {
             if (_lineBuffer.Length == 0) return;
 
-            // Проверка на "Press any key" в остатках буфера
+            // Check remaining buffer for pause prompts
             string cleanBuffer = AnsiAllRegex.Replace(_lineBuffer.ToString(), "");
             if (PausePromptRegex.IsMatch(cleanBuffer))
                 {
@@ -237,44 +225,41 @@ namespace ATT_Wrapper.Services
 
             foreach (var line in lines)
                 {
-                // Skip the last empty element from split (if finalText ends with \n)
+                // Preserve structural newlines, skip split artifact
                 if (line == "" && lines[lines.Length - 1] == line) continue;
 
                 string cleanContent = AnsiAllRegex.Replace(line, "").Trim();
 
-                // Filters - skip specific patterns
+                // Filters
                 if (cleanContent.StartsWith("Running task", StringComparison.OrdinalIgnoreCase)) continue;
                 if (cleanContent.Contains("]0;") && cleanContent.Contains("cmd.exe") && cleanContent.Length < 50) continue;
 
-                // Clean visual artifacts
                 string lineForUi = UiCleanerRegex.Replace(line, "");
 
-                // Remove cursor positioning codes (they create artifacts in plain text)
+                // Remove positioning codes
                 lineForUi = Regex.Replace(lineForUi, @"\x1B\[\d+(;\d+)?[Hf]", "");
 
-                // IMPORTANT: Replace cursor movement codes with actual spaces BEFORE removing other ANSI codes
+                // Convert cursor movement to spaces before stripping ANSI
                 lineForUi = ReplaceCursorMovementWithSpaces(lineForUi);
 
-                lineForUi = lineForUi.Replace("\x1B[K", ""); // Remove Clear Line codes
+                lineForUi = lineForUi.Replace("\x1B[K", "");
                 lineForUi = WindowTitleRegex.Replace(lineForUi, "");
 
-                // Add extra space after "FAIL" word (check in clean text to avoid matching inside ANSI codes)
+                // Add visual space after FAIL
                 string cleanCheck = AnsiAllRegex.Replace(lineForUi, "");
                 if (cleanCheck.Contains("FAIL"))
                     {
                     lineForUi = Regex.Replace(lineForUi, @"(FAIL)(\S)", "$1  $2");
                     }
 
-                // Check if line is empty after cleaning
                 string cleanedForCheck = AnsiAllRegex.Replace(lineForUi, "");
 
-                // Skip lines that were only ANSI codes (no real content)
+                // Skip purely ANSI lines
                 if (string.IsNullOrWhiteSpace(cleanedForCheck) && !string.IsNullOrWhiteSpace(AnsiAllRegex.Replace(line, "")))
                     {
                     continue;
                     }
 
-                // Append the line (could be blank or have content) with single newline
                 sbUi.Append(lineForUi).Append('\n');
                 }
 
@@ -296,26 +281,21 @@ namespace ATT_Wrapper.Services
                 string numStr = match.Groups[1].Value;
                 int count = string.IsNullOrEmpty(numStr) ? 1 : int.Parse(numStr);
 
-                // Only convert small cursor movements to spaces (likely intentional indentation)
-                // Large movements (>10) are for screen positioning and should be removed
+                // Ignore large movements (likely screen positioning)
                 if (count > 10)
                     {
-                    return ""; // Remove large cursor movements
+                    return "";
                     }
 
                 return new string(' ', count);
             });
             }
 
-
         private void LogRawChunk(string text)
             {
             if (string.IsNullOrEmpty(text)) return;
-
-            // Convert ALL control characters to readable tags ([ESC], [x07], etc.)
-            // so absolutely nothing remains hidden in the text editor.
+            // Log readable control characters
             string safeText = SanitizeForLog(text);
-
             Log.Debug($"{safeText}");
             }
 
@@ -327,7 +307,7 @@ namespace ATT_Wrapper.Services
 
             foreach (char c in input)
                 {
-                if (c < 32) // Control characters (ASCII 0-31)
+                if (c < 32) // Control chars (ASCII 0-31)
                     {
                     switch (c)
                         {
@@ -335,9 +315,9 @@ namespace ATT_Wrapper.Services
                         case '\n': sb.Append("[LF]"); break;
                         case '\t': sb.Append("[TAB]"); break;
                         case '\x1b': sb.Append("[ESC]"); break;
-                        case '\x07': sb.Append("[BEL]"); break; // The 0x07 you noticed
-                        case '\x08': sb.Append("[BS]"); break;  // Backspace
-                        default: sb.Append($"[x{(int)c:X2}]"); break; // Any other weird char -> hex
+                        case '\x07': sb.Append("[BEL]"); break;
+                        case '\x08': sb.Append("[BS]"); break;
+                        default: sb.Append($"[x{(int)c:X2}]"); break;
                         }
                     }
                 else
@@ -352,15 +332,13 @@ namespace ATT_Wrapper.Services
             {
             try
                 {
-                // Use compiled regex split
                 string[] parts = AnsiSplitRegex.Split(text);
 
-                // Start with current state
-                Color currentForeColor = box.SelectionColor.Name == "0" ? box.ForeColor : box.SelectionColor; // Fallback
+                Color currentForeColor = box.SelectionColor.Name == "0" ? box.ForeColor : box.SelectionColor;
                 Color currentBackColor = box.SelectionBackColor.Name == "0" ? box.BackColor : box.SelectionBackColor;
                 FontStyle currentStyle = box.SelectionFont?.Style ?? FontStyle.Regular;
 
-                box.Suspend(); // Performance optimization for bulk updates
+                box.Suspend();
 
                 foreach (string part in parts)
                     {
@@ -375,7 +353,6 @@ namespace ATT_Wrapper.Services
                         box.SelectionColor = currentForeColor;
                         box.SelectionBackColor = currentBackColor;
 
-                        // Apply font style safely
                         using (var currentFont = box.SelectionFont)
                             {
                             box.SelectionFont = new Font(box.Font.FontFamily, box.Font.Size, currentStyle);
@@ -453,16 +430,12 @@ namespace ATT_Wrapper.Services
             }
         }
 
-    // Extension methods for RichTextBox performance
     public static class RichTextBoxExtensions
         {
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int wMsg, int wParam, ref Point lParam);
         private const int WM_USER = 0x400;
-        private const int EM_SETSCROLLPOS = WM_USER + 222;
-        private const int EM_GETSCROLLPOS = WM_USER + 221;
 
-        // Helps reduce flicker during updates
         public static void Suspend(this Control control)
             {
             Message msg = Message.Create(control.Handle, 0x000B, IntPtr.Zero, IntPtr.Zero); // WM_SETREDRAW
@@ -477,7 +450,5 @@ namespace ATT_Wrapper.Services
             window.DefWndProc(ref msg);
             control.Invalidate();
             }
-
-
         }
     }

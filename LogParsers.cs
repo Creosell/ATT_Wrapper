@@ -112,17 +112,18 @@ namespace ATT_Wrapper
         {
         public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
             {
-            if (line.Contains("Running with administrative")) { onResult?.Invoke("PASS", "Admin privileges"); return true; }
+            //if (line.Contains("Running with administrative")) { onResult?.Invoke("PASS", "Admin privileges"); return true; }
             if (line.Contains("No internet")) { onProgress?.Invoke("Waiting for internet..."); return false; }
             if (line.Contains("Internet connection detected")) { onResult?.Invoke("PASS", "Internet connected"); return true; }
 
             if (line.Contains("Resetting branch")) { onProgress?.Invoke("Git: Pulling..."); return false; }
-            if (line.Contains("Successfully pulled")) { onResult?.Invoke("PASS", "Git: Updated"); return true; }
+            if (line.Contains("Successfully pulled")) { onResult?.Invoke("PASS", "Repository updated"); return true; }
             if (line.Contains("Failed to pull")) { onResult?.Invoke("FAIL", "Git: Pull failed"); return true; }
-            if (line.Contains("Already up to date")) { onResult?.Invoke("PASS", "Git: No updates"); return true; }
+            if (line.Contains("Already up to date")) { onResult?.Invoke("PASS", "Repository has no updates"); return true; }
 
-            if (line.Contains("Installing dependencies")) { onProgress?.Invoke("Poetry: Installing..."); return false; }
-            if (line.Contains("Installing the current project")) { onResult?.Invoke("PASS", "Poetry: Installed"); return true; }
+            if (line.Contains("Installing dependencies")) { onProgress?.Invoke("Installing dependencies..."); return false; }
+            if (line.Contains("Installing the current project")) { onResult?.Invoke("PASS", "Dependencies installed"); return true; }
+            if (line.Contains("Update finished")) { onResult?.Invoke("PASS", "Update finished"); return true; }
 
             return false;
             }

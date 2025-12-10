@@ -167,7 +167,6 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <None Include="Reports\SDNB 14X_HTSB03B30S08AA01023_2025-11-27_112945_report.json" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

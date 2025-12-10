@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Newtonsoft.Json; // Требуется NuGet: Newtonsoft.Json
+using Newtonsoft.Json;
 
 namespace ATT_Wrapper
     {
