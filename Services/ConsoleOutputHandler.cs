@@ -1,10 +1,11 @@
-﻿using System;
+﻿using ATT_Wrapper.Components;
+using Serilog;
+using System;
 using System.Drawing;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
-using ATT_Wrapper.Components;
-using Serilog;
 
 namespace ATT_Wrapper.Services
     {
@@ -24,6 +25,11 @@ namespace ATT_Wrapper.Services
         private static readonly Regex AnsiAllRegex = new Regex(@"(\x1B\[[\x30-\x3F]*[\x20-\x2F]*[\x40-\x7E]|\x1B\][^\x07\x1B]*(\x07|\x1B\\)|\x1B[PX^_].*?(\x07|\x1B\\))", RegexOptions.Compiled);
         private static readonly Regex PausePromptRegex = new Regex(@"(Press any key|Press Enter|any key to continue)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex UiCleanerRegex = new Regex(@"Press any key to continue( \. \. \.)?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        // Ловит возврат каретки (\r) и ANSI-коды перемещения курсора (H - позиция)
+        private static readonly Regex LineResetRegex = new Regex(@"(\r|\x1B\[\d+;\d+[Hf]|\x1B\[\d+[Hf])", RegexOptions.Compiled);
+        // Matches OSC 0 sequences (Window Title): ESC ] 0 ; ... BEL
+        private static readonly Regex WindowTitleRegex = new Regex(@"\x1B\]0;.*?\x07", RegexOptions.Compiled);
+        private static readonly Regex CursorForwardRegex = new Regex(@"\x1B\[(\d*)C", RegexOptions.Compiled);
 
         public ConsoleOutputHandler(
             ILogParser parser,
@@ -43,174 +49,264 @@ namespace ATT_Wrapper.Services
             {
             if (string.IsNullOrEmpty(rawChunk)) return;
 
-            // 1. Detailed Logging (File layer typically captures Debug/Verbose)
             LogRawChunk(rawChunk);
 
-            // 2. Buffer Processing (Parser & Pause Detection)
+            string linesToPrint = string.Empty;
+
             lock (_bufferLock)
                 {
                 _lineBuffer.Append(rawChunk);
 
-                // Prevent infinite buffer growth
-                if (_lineBuffer.Length > 20000)
+                // Защита от переполнения буфера (если \n долго не приходит)
+                if (_lineBuffer.Length > 50000)
                     {
-                    Log.Warning("Buffer overflow protected. Trimming start.");
-                    _lineBuffer.Remove(0, 10000);
+                    Log.Warning("[ConsoleOutputHandler] Buffer overflow. Force flush.");
+                    linesToPrint = _lineBuffer.ToString() + "\n";
+                    _lineBuffer.Clear();
+                    }
+                else
+                    {
+                    // Пытаемся извлечь полные строки, схлопывая анимации
+                    linesToPrint = ExtractCompleteLinesLocked();
                     }
 
-                ProcessBufferLocked();
+                CheckBufferForPauseLocked();
                 }
 
-            // 3. UI Update Logic
-            UpdateUi(rawChunk, rtbLog);
-            }
-
-        private void UpdateUi(string rawChunk, RichTextBox rtbLog)
-            {
-            // Fix glue issues by handling cursor movement ANSI manually
-            string processedChunk = rawChunk.Replace("\x1b[1C", " ");
-
-            // Split into lines to apply filters per line
-            var lines = processedChunk.Split(new[] { '\n' }, StringSplitOptions.None);
-            var sbUi = new StringBuilder();
-
-            for (int i = 0; i < lines.Length; i++)
+            // Обновляем UI, если есть готовые строки
+            if (!string.IsNullOrEmpty(linesToPrint))
                 {
-                string line = lines[i];
-
-                // Filter: Remove "Press any key" visual clutter
-                string lineForUi = UiCleanerRegex.Replace(line, "");
-
-                // Check content without ANSI
-                string contentCheck = AnsiAllRegex.Replace(lineForUi, "").Trim();
-
-                // Filter 1: Skip "Running task"
-                if (contentCheck.StartsWith("Running task", StringComparison.OrdinalIgnoreCase))
-                    {
-                    Log.Debug($"Skipped 'Running task' message: '{contentCheck}'");
-                    continue;
-                    }
-
-                // Filter 2: Skip CMD title artifacts (ADDED with Logging)
-                if (lineForUi.Contains("]0;") && lineForUi.Contains("cmd.exe"))
-                    {
-                    // Logging at Debug level to keep Console clean (Info level) but capture in File
-                    Log.Debug($"Skipped CMD artifact: '{lineForUi.Trim()}'");
-                    continue;
-                    }
-
-                // Filter 3: Skip purely empty lines unless they are structural newlines
-                if (string.IsNullOrWhiteSpace(contentCheck) && string.IsNullOrWhiteSpace(lineForUi))
-                    {
-                    // Allow one empty line if the original chunk was just a newline
-                    if (lines.Length == 1 && string.IsNullOrWhiteSpace(line))
-                        {
-                        // Keep logic implicit
-                        }
-                    else if (i < lines.Length - 1)
-                        {
-                        // Skip empty intermediate lines
-                        continue;
-                        }
-                    }
-
-                sbUi.Append(lineForUi.Replace("\r", ""));
-
-                if (i < lines.Length - 1) sbUi.Append('\n');
-                }
-
-            string finalUiText = sbUi.ToString();
-
-            // Restore trailing newline if lost during split
-            if (( rawChunk.EndsWith("\n") || rawChunk.EndsWith("\r") ) && !finalUiText.EndsWith("\n") && finalUiText.Length > 0)
-                {
-                finalUiText += "\n";
-                }
-
-            if (string.IsNullOrEmpty(finalUiText)) return;
-
-            // Thread-safe UI update
-            if (rtbLog.InvokeRequired)
-                {
-                rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, finalUiText)));
-                }
-            else
-                {
-                AppendTextToRichTextBox(rtbLog, finalUiText);
+                UpdateUi(linesToPrint, rtbLog);
                 }
             }
 
-        private void ProcessBufferLocked()
+        private string ExtractCompleteLinesLocked()
             {
             string currentBuffer = _lineBuffer.ToString();
 
-            // Optimization: rapid check before heavy regex
-            if (currentBuffer.Length == 0) return;
+            // Если нет новой строки, выходим и ждем следующий чанк
+            if (currentBuffer.IndexOf('\n') == -1) return null;
 
-            // 1. Pause Detection
-            // We check the raw buffer (cleaned of ANSI) for prompts
-            string cleanBuffer = AnsiAllRegex.Replace(currentBuffer, "");
+            var sbFinalOutput = new StringBuilder();
+            int lastNewlineIndex = -1;
 
-            if (PausePromptRegex.IsMatch(cleanBuffer))
+            for (int i = 0; i < currentBuffer.Length; i++)
                 {
-                Log.Information("Pause prompt detected in buffer. Auto-continuing.");
-                Log.Verbose($"Pause context: '{cleanBuffer.Trim()}'");
+                if (currentBuffer[i] == '\n')
+                    {
+                    // Извлекаем "сырую" строку от последнего \n до текущего
+                    // (currentBuffer[i] это \n, поэтому длина = i - lastNewlineIndex - 1)
+                    int startIndex = lastNewlineIndex + 1;
+                    int length = i - startIndex;
 
-                _lineBuffer.Clear();
-                _statusCallback?.Invoke("Auto-continuing...");
-                _enterCallback?.Invoke();
-                return;
+                    string rawLine = currentBuffer.Substring(startIndex, length);
+
+                    // ГЛАВНОЕ: Превращаем "Loading...[CR]Done" -> "Done"
+                    string collapsedLine = GetFinalLineState(rawLine);
+
+                    if (!string.IsNullOrEmpty(collapsedLine))
+                        {
+                        sbFinalOutput.Append(collapsedLine).Append('\n');
+
+                        // Отправляем в парсер (для таблицы результатов) чистую версию
+                        ParseCleanLine(collapsedLine);
+                        }
+
+                    lastNewlineIndex = i;
+                    }
                 }
 
-            // 2. Parse Complete Lines
-            int newlineIndex;
-            // Iterate while there are newlines
-            while (( newlineIndex = indexOfNewline(_lineBuffer) ) >= 0)
+            // Удаляем из буфера всё, что успешно обработали (включая последний \n)
+            if (lastNewlineIndex != -1)
                 {
-                // Extract line including valid content before the newline
-                string line = _lineBuffer.ToString(0, newlineIndex).Trim();
+                _lineBuffer.Remove(0, lastNewlineIndex + 1);
+                }
 
-                // Remove processed line + newline char(s)
-                // Need to handle \r\n vs \n correctly for removal
-                int removeLength = newlineIndex + 1;
-                if (newlineIndex < _lineBuffer.Length - 1 && _lineBuffer[newlineIndex] == '\r' && _lineBuffer[newlineIndex+1] == '\n')
+            return sbFinalOutput.ToString();
+            }
+
+        private string GetFinalLineState(string rawLine)
+            {
+            if (string.IsNullOrEmpty(rawLine)) return rawLine;
+
+            // Убираем \r в конце, если он прилип к \n
+            string trimmed = rawLine.TrimEnd('\r');
+
+            // Если в строке нет управляющих символов перезаписи, возвращаем как есть
+            if (!LineResetRegex.IsMatch(trimmed)) return trimmed;
+
+            // Разбиваем строку по кадрам (\r или коды курсора)
+            string[] frames = LineResetRegex.Split(trimmed);
+
+            // Collect ANSI codes from all frames and apply them to the final frame
+            StringBuilder ansiPrefix = new StringBuilder();
+            string finalContent = null;
+
+            for (int i = frames.Length - 1; i >= 0; i--)
+                {
+                string frame = frames[i];
+
+                // Skip the reset characters themselves (empty strings from split)
+                if (string.IsNullOrEmpty(frame)) continue;
+
+                // If we haven't found content yet, check if this frame has content
+                if (finalContent == null && !IsJustAnsiOrEmpty(frame))
                     {
-                    removeLength++;
+                    finalContent = frame;
+                    // Continue to collect ANSI codes from previous frames
                     }
-
-                _lineBuffer.Remove(0, removeLength);
-
-                if (!string.IsNullOrWhiteSpace(line))
+                else if (finalContent != null)
                     {
-                    string cleanLine = AnsiAllRegex.Replace(line, "");
-                    if (!string.IsNullOrWhiteSpace(cleanLine))
+                    // Collect ANSI codes from earlier frames
+                    var ansiCodes = ExtractAnsiCodes(frame);
+                    if (!string.IsNullOrEmpty(ansiCodes))
                         {
-                        // Pass to external parser
-                        try
-                            {
-                            _parser.ParseLine(cleanLine,
-                                (status, msg) => _gridController.HandleLogMessage(status, msg),
-                                (progMsg) => _statusCallback?.Invoke(progMsg)
-                            );
-                            }
-                        catch (Exception ex)
-                            {
-                            Log.Error(ex, $"Error parsing line: {cleanLine}");
-                            }
+                        ansiPrefix.Insert(0, ansiCodes);
                         }
                     }
                 }
+
+            // If we found content, prepend the ANSI codes
+            if (finalContent != null && ansiPrefix.Length > 0)
+                {
+                return ansiPrefix.ToString() + finalContent;
+                }
+
+            return finalContent ?? trimmed;
             }
 
-        // Helper to find newline in StringBuilder without creating strings
-        private int indexOfNewline(StringBuilder sb)
+        private string ExtractAnsiCodes(string text)
             {
-            for (int i = 0; i < sb.Length; i++)
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+
+            // Extract all ANSI codes from the text
+            var matches = AnsiAllRegex.Matches(text);
+            if (matches.Count == 0) return string.Empty;
+
+            StringBuilder sb = new StringBuilder();
+            foreach (Match match in matches)
                 {
-                if (sb[i] == '\n' || sb[i] == '\r') return i;
+                sb.Append(match.Value);
                 }
-            return -1;
+            return sb.ToString();
             }
+
+        private bool IsJustAnsiOrEmpty(string text)
+            {
+            if (string.IsNullOrEmpty(text)) return true;
+            // Удаляем цвета и проверяем, остался ли текст
+            string clean = AnsiAllRegex.Replace(text, "").Replace("\r", "").Trim();
+            return string.IsNullOrEmpty(clean);
+            }
+
+        private void ParseCleanLine(string lineWithColors)
+            {
+            // Очищаем от цветов перед отправкой в логику парсера
+            string cleanLine = AnsiAllRegex.Replace(lineWithColors, "").Trim();
+            if (!string.IsNullOrWhiteSpace(cleanLine))
+                {
+                try
+                    {
+                    _parser.ParseLine(cleanLine,
+                        (status, msg) => _gridController.HandleLogMessage(status, msg),
+                        (progMsg) => _statusCallback?.Invoke(progMsg)
+                    );
+                    }
+                catch { /* Игнорируем ошибки парсинга */ }
+                }
+            }
+
+        private void CheckBufferForPauseLocked()
+            {
+            if (_lineBuffer.Length == 0) return;
+
+            // Проверка на "Press any key" в остатках буфера
+            string cleanBuffer = AnsiAllRegex.Replace(_lineBuffer.ToString(), "");
+            if (PausePromptRegex.IsMatch(cleanBuffer))
+                {
+                _lineBuffer.Clear();
+                _statusCallback?.Invoke("Auto-continuing...");
+                _enterCallback?.Invoke();
+                }
+            }
+
+        private void UpdateUi(string finalText, RichTextBox rtbLog)
+            {
+            var sbUi = new StringBuilder();
+            var lines = finalText.Split('\n');
+
+            foreach (var line in lines)
+                {
+                // Skip the last empty element from split (if finalText ends with \n)
+                if (line == "" && lines[lines.Length - 1] == line) continue;
+
+                string cleanContent = AnsiAllRegex.Replace(line, "").Trim();
+
+                // Filters - skip specific patterns
+                if (cleanContent.StartsWith("Running task", StringComparison.OrdinalIgnoreCase)) continue;
+                if (cleanContent.Contains("]0;") && cleanContent.Contains("cmd.exe") && cleanContent.Length < 50) continue;
+
+                // Clean visual artifacts
+                string lineForUi = UiCleanerRegex.Replace(line, "");
+
+                // Remove cursor positioning codes (they create artifacts in plain text)
+                lineForUi = Regex.Replace(lineForUi, @"\x1B\[\d+(;\d+)?[Hf]", "");
+
+                // IMPORTANT: Replace cursor movement codes with actual spaces BEFORE removing other ANSI codes
+                lineForUi = ReplaceCursorMovementWithSpaces(lineForUi);
+
+                lineForUi = lineForUi.Replace("\x1B[K", ""); // Remove Clear Line codes
+                lineForUi = WindowTitleRegex.Replace(lineForUi, "");
+
+                // Add extra space after "FAIL" word (check in clean text to avoid matching inside ANSI codes)
+                string cleanCheck = AnsiAllRegex.Replace(lineForUi, "");
+                if (cleanCheck.Contains("FAIL"))
+                    {
+                    lineForUi = Regex.Replace(lineForUi, @"(FAIL)(\S)", "$1  $2");
+                    }
+
+                // Check if line is empty after cleaning
+                string cleanedForCheck = AnsiAllRegex.Replace(lineForUi, "");
+
+                // Skip lines that were only ANSI codes (no real content)
+                if (string.IsNullOrWhiteSpace(cleanedForCheck) && !string.IsNullOrWhiteSpace(AnsiAllRegex.Replace(line, "")))
+                    {
+                    continue;
+                    }
+
+                // Append the line (could be blank or have content) with single newline
+                sbUi.Append(lineForUi).Append('\n');
+                }
+
+            string textToAppend = sbUi.ToString();
+            if (string.IsNullOrEmpty(textToAppend)) return;
+
+            Log.Debug($"[UI Render] {SanitizeForLog(textToAppend)}");
+
+            if (rtbLog.InvokeRequired)
+                rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, textToAppend)));
+            else
+                AppendTextToRichTextBox(rtbLog, textToAppend);
+            }
+
+        private string ReplaceCursorMovementWithSpaces(string text)
+            {
+            return CursorForwardRegex.Replace(text, match =>
+            {
+                string numStr = match.Groups[1].Value;
+                int count = string.IsNullOrEmpty(numStr) ? 1 : int.Parse(numStr);
+
+                // Only convert small cursor movements to spaces (likely intentional indentation)
+                // Large movements (>10) are for screen positioning and should be removed
+                if (count > 10)
+                    {
+                    return ""; // Remove large cursor movements
+                    }
+
+                return new string(' ', count);
+            });
+            }
+
 
         private void LogRawChunk(string text)
             {
@@ -381,5 +477,7 @@ namespace ATT_Wrapper.Services
             window.DefWndProc(ref msg);
             control.Invalidate();
             }
+
+
         }
     }
