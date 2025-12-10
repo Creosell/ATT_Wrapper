@@ -33,7 +33,7 @@ namespace ATT_Wrapper.Services
             if (_process != null)
                 throw new InvalidOperationException("Process is already running.");
 
-            Log.Information($"[ProcessExecutor] Starting: {command}");
+            Log.Information($"Starting: {command}");
 
             // 1. Create pipes
             _inputPipe = new PseudoConsolePipe();
@@ -44,7 +44,7 @@ namespace ATT_Wrapper.Services
 
             // 3. Start process
             _process = ProcessFactory.Start(command, PseudoConsole.PseudoConsoleThreadAttribute, _pseudoConsole.Handle);
-            Log.Information($"[ProcessExecutor] Process started, PID: {_process.ProcessInfo.dwProcessId}");
+            Log.Information($"Process started, PID: {_process.ProcessInfo.dwProcessId}");
 
             // 4. Setup input stream (for SendInput)
             _inputStream = new FileStream(_inputPipe.WriteSide, FileAccess.Write);
@@ -64,17 +64,17 @@ namespace ATT_Wrapper.Services
                 byte[] bytes = Encoding.UTF8.GetBytes(input);
                 _inputStream.Write(bytes, 0, bytes.Length);
                 _inputStream.Flush();
-                Log.Debug($"[ProcessExecutor] Sent: {input.Replace("\r", "\\r").Replace("\n", "\\n")}");
+                Log.Debug($"Sent: {input.Replace("\r", "\\r").Replace("\n", "\\n")}");
                 }
             catch (Exception ex)
                 {
-                Log.Warning(ex, "[ProcessExecutor] SendInput error");
+                Log.Warning(ex, "SendInput error");
                 }
             }
 
         public void Kill()
             {
-            Log.Information("[ProcessExecutor] Kill() called");
+            Log.Information("Kill() called");
 
             if (_process != null && _process.ProcessInfo.dwProcessId > 0)
                 {
@@ -91,12 +91,12 @@ namespace ATT_Wrapper.Services
                         UseShellExecute = false
                         };
                     System.Diagnostics.Process.Start(psi)?.WaitForExit(2000); // Ждем до 2 секунд
-                    Log.Information($"[ProcessExecutor] Taskkill executed for PID: {_process.ProcessInfo.dwProcessId}");
+                    Log.Information($"Taskkill executed for PID: {_process.ProcessInfo.dwProcessId}");
                     }
                 catch (Exception ex)
                     {
                     // Игнорируем ошибку, если процесс уже умер
-                    Log.Warning(ex, "[ProcessExecutor] Failed to execute taskkill (process might be already dead)");
+                    Log.Warning(ex, "Failed to execute taskkill (process might be already dead)");
                     }
                 }
 
@@ -107,7 +107,7 @@ namespace ATT_Wrapper.Services
         // CRITICAL FIX: Read raw bytes without StreamReader to avoid buffering
         private void ReadOutputLoop(SafeFileHandle outputReadSide, CancellationToken token)
             {
-            Log.Debug("[ProcessExecutor] ReadOutputLoop started");
+            //Log.Debug("ReadOutputLoop started");
 
             // Use FileStream directly - NO StreamReader!
             using (var fs = new FileStream(outputReadSide, FileAccess.Read))
@@ -122,23 +122,23 @@ namespace ATT_Wrapper.Services
 
                         if (bytesRead == 0)
                             {
-                            Log.Debug("[ProcessExecutor] Pipe closed");
+                            Log.Debug("Pipe closed");
                             break;
                             }
 
                         // Convert to string
                         string data = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
-                        // Log it
-                        string logData = data.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\x1b", "\\x1b");
-                        if (logData.Length > 300)
-                            {
-                            Log.Debug($"[ProcessExecutor] Read {bytesRead} bytes: {logData.Substring(0, 300)}...");
-                            }
-                        else
-                            {
-                            Log.Debug($"[ProcessExecutor] Read {bytesRead} bytes: {logData}");
-                            }
+                        //// Log it
+                        //string logData = data.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\x1b", "\\x1b");
+                        //if (logData.Length > 300)
+                        //    {
+                        //    Log.Debug($"Read {bytesRead} bytes: {logData.Substring(0, 300)}...");
+                        //    }
+                        //else
+                        //    {
+                        //    Log.Debug($"Read {bytesRead} bytes: {logData}");
+                        //    }
 
                         // Fire event
                         OnOutputReceived?.Invoke(data);
@@ -146,19 +146,19 @@ namespace ATT_Wrapper.Services
                     }
                 catch (IOException ex)
                     {
-                    Log.Debug(ex, "[ProcessExecutor] Pipe broken");
+                    Log.Debug(ex, "Pipe broken");
                     }
                 catch (ObjectDisposedException)
                     {
-                    Log.Debug("[ProcessExecutor] Stream disposed");
+                    Log.Debug("Stream disposed");
                     }
                 catch (Exception ex)
                     {
-                    Log.Error(ex, "[ProcessExecutor] ReadOutput error");
+                    Log.Error(ex, "ReadOutput error");
                     }
                 }
 
-            Log.Debug("[ProcessExecutor] ReadOutputLoop finished");
+            Log.Debug("ReadOutputLoop finished");
             }
 
         private void WaitForExitLoop(Process process)
@@ -171,13 +171,13 @@ namespace ATT_Wrapper.Services
                 waitHandle.WaitOne();
                 }
 
-            Log.Information("[ProcessExecutor] Process exited");
+            Log.Information("Process exited");
             OnExited?.Invoke(this, EventArgs.Empty);
             }
 
         public void Dispose()
             {
-            Log.Debug("[ProcessExecutor] Dispose");
+            Log.Debug("Dispose");
 
             _cancellationTokenSource?.Cancel();
 
