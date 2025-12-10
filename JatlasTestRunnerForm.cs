@@ -7,35 +7,48 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
+using MaterialSkin;
+using MaterialSkin.Controls;
 using System.Windows.Forms;
 
 namespace ATT_Wrapper
     {
-    public partial class JatlasTestRunnerForm : Form
+    public partial class JatlasTestRunnerForm : MaterialForm
         {
         private const string SCRIPT_PATH = @"C:\jatlas\scripts\win_scripts\";
+        private readonly MaterialSkinManager materialSkinManager; // Менеджер скинов
 
         private ProcessExecutor _executor;
         private readonly ResultsGridController _gridController;
         private readonly MappingManager _mapper;
         private readonly string _mainLogPath;
-
         private ConsoleOutputHandler _outputHandler;
-
-        private const string AnsiRegex = @"\x1B\[[0-9;?]*[ -/]*[@-~]";
 
         public JatlasTestRunnerForm()
             {
             InitializeComponent();
 
-            // Setup logs directory and file path
+            // 2. Инициализация MaterialSkin
+            materialSkinManager = MaterialSkinManager.Instance;
+            materialSkinManager.AddFormToManage(this);
+            materialSkinManager.Theme = MaterialSkinManager.Themes.LIGHT;
+
+            // 3. Цветовая палитра Material Design 3 (Blue Baseline)
+            // Primary: #00639B (Deep Blue)
+            // DarkPrimary: #004A73
+            // LightPrimary: #D1E4FF
+            // Accent: #D1E4FF (Secondary Container)
+            materialSkinManager.ColorScheme = new ColorScheme(
+                Primary.Green800,
+                Primary.Green900,
+                Primary.Green900,
+                Accent.LightBlue200,
+                TextShade.WHITE
+            );
+
+            // Setup logs directory...
             string logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
-            if (!Directory.Exists(logDirectory))
-                {
-                Directory.CreateDirectory(logDirectory);
-                }
+            if (!Directory.Exists(logDirectory)) Directory.CreateDirectory(logDirectory);
             _mainLogPath = Path.Combine(logDirectory, "jatlas_runner.log");
 
             SetupLogging();
@@ -48,9 +61,9 @@ namespace ATT_Wrapper
             _executor.OnOutputReceived += HandleOutput;
             _executor.OnExited += HandleExit;
 
-            Log.Information("Event handlers subscribed");
-
-            ThemeManager.Apply(this, dgvResults, rtbLog);
+            // 3. ПРИМЕНЯЕМ ТЕМУ ТОЛЬКО К GRID и LOG (Кнопки теперь Material)
+            // Мы передаем null вместо кнопок, так как MaterialSkin сам их красит
+            ThemeManager.Apply(this, dgvResults, rtbLog, mainButtonsLayoutPanel, extraButtonsLayoutPanel);
             }
 
         private void SetupLogging()

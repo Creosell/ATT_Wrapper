@@ -29,85 +29,97 @@
         private void InitializeComponent()
             {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(JatlasTestRunnerForm));
-            this.btnUpdate = new System.Windows.Forms.Button();
-            this.btnCommon = new System.Windows.Forms.Button();
-            this.btnSpecial = new System.Windows.Forms.Button();
-            this.btnCommonOffline = new System.Windows.Forms.Button();
-            this.taskKillBtn = new System.Windows.Forms.Button();
+            this.btnUpdate = new MaterialSkin.Controls.MaterialButton();
+            this.btnCommon = new MaterialSkin.Controls.MaterialButton();
+            this.btnSpecial = new MaterialSkin.Controls.MaterialButton();
             this.dgvResults = new System.Windows.Forms.DataGridView();
-            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.statusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.tabControlOutput = new System.Windows.Forms.TabControl();
             this.tabSimple = new System.Windows.Forms.TabPage();
             this.tabExpert = new System.Windows.Forms.TabPage();
             this.rtbLog = new System.Windows.Forms.RichTextBox();
             this.tabControlActions = new System.Windows.Forms.TabControl();
-            this.main = new System.Windows.Forms.TabPage();
+            this.mainButtonsTab = new System.Windows.Forms.TabPage();
             this.mainButtonsLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
-            this.dev = new System.Windows.Forms.TabPage();
-            this.mainLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
-            this.testBtn = new System.Windows.Forms.Button();
-            this.button1 = new System.Windows.Forms.Button();
+            this.btnAging = new MaterialSkin.Controls.MaterialButton();
+            this.taskKillBtn = new MaterialSkin.Controls.MaterialButton();
+            this.extraButtonsTab = new System.Windows.Forms.TabPage();
+            this.extraButtonsLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
+            this.btnCommonOffline = new MaterialSkin.Controls.MaterialButton();
+            this.formTableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).BeginInit();
-            this.statusStrip1.SuspendLayout();
+            this.statusStrip.SuspendLayout();
             this.tabControlOutput.SuspendLayout();
             this.tabSimple.SuspendLayout();
             this.tabExpert.SuspendLayout();
             this.tabControlActions.SuspendLayout();
-            this.main.SuspendLayout();
+            this.mainButtonsTab.SuspendLayout();
             this.mainButtonsLayoutPanel.SuspendLayout();
-            this.mainLayoutPanel.SuspendLayout();
+            this.extraButtonsTab.SuspendLayout();
+            this.extraButtonsLayoutPanel.SuspendLayout();
+            this.formTableLayoutPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnUpdate
             // 
-            this.btnUpdate.Location = new System.Drawing.Point(3, 3);
+            this.btnUpdate.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnUpdate.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.btnUpdate.Depth = 0;
+            this.btnUpdate.HighEmphasis = true;
+            this.btnUpdate.Icon = null;
+            this.btnUpdate.Location = new System.Drawing.Point(4, 6);
+            this.btnUpdate.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnUpdate.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnUpdate.Name = "btnUpdate";
-            this.btnUpdate.Size = new System.Drawing.Size(150, 50);
+            this.btnUpdate.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.btnUpdate.Size = new System.Drawing.Size(77, 36);
             this.btnUpdate.TabIndex = 4;
             this.btnUpdate.Text = "Update";
+            this.btnUpdate.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.btnUpdate.UseAccentColor = false;
             this.btnUpdate.UseVisualStyleBackColor = true;
             this.btnUpdate.Click += new System.EventHandler(this.btnUpdate_Click);
             // 
             // btnCommon
             // 
-            this.btnCommon.Location = new System.Drawing.Point(3, 59);
+            this.btnCommon.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnCommon.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.btnCommon.Depth = 0;
+            this.btnCommon.HighEmphasis = true;
+            this.btnCommon.Icon = null;
+            this.btnCommon.Location = new System.Drawing.Point(4, 54);
+            this.btnCommon.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnCommon.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnCommon.Name = "btnCommon";
-            this.btnCommon.Size = new System.Drawing.Size(150, 50);
+            this.btnCommon.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.btnCommon.Size = new System.Drawing.Size(88, 36);
             this.btnCommon.TabIndex = 5;
             this.btnCommon.Text = "Common";
+            this.btnCommon.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.btnCommon.UseAccentColor = false;
             this.btnCommon.UseVisualStyleBackColor = true;
             this.btnCommon.Click += new System.EventHandler(this.btnCommon_Click);
             // 
             // btnSpecial
             // 
-            this.btnSpecial.Location = new System.Drawing.Point(3, 115);
+            this.btnSpecial.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnSpecial.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.btnSpecial.Depth = 0;
+            this.btnSpecial.HighEmphasis = true;
+            this.btnSpecial.Icon = null;
+            this.btnSpecial.Location = new System.Drawing.Point(4, 102);
+            this.btnSpecial.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnSpecial.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnSpecial.Name = "btnSpecial";
-            this.btnSpecial.Size = new System.Drawing.Size(150, 50);
+            this.btnSpecial.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.btnSpecial.Size = new System.Drawing.Size(80, 36);
             this.btnSpecial.TabIndex = 6;
             this.btnSpecial.Text = "Special";
+            this.btnSpecial.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.btnSpecial.UseAccentColor = false;
             this.btnSpecial.UseVisualStyleBackColor = true;
             this.btnSpecial.Click += new System.EventHandler(this.btnSpecial_Click);
-            // 
-            // btnCommonOffline
-            // 
-            this.btnCommonOffline.Location = new System.Drawing.Point(3, 171);
-            this.btnCommonOffline.Name = "btnCommonOffline";
-            this.btnCommonOffline.Size = new System.Drawing.Size(150, 50);
-            this.btnCommonOffline.TabIndex = 7;
-            this.btnCommonOffline.Text = "Common (Offline)";
-            this.btnCommonOffline.UseVisualStyleBackColor = true;
-            this.btnCommonOffline.Click += new System.EventHandler(this.btnCommonOffline_Click);
-            // 
-            // taskKillBtn
-            // 
-            this.taskKillBtn.Location = new System.Drawing.Point(3, 227);
-            this.taskKillBtn.Name = "taskKillBtn";
-            this.taskKillBtn.Size = new System.Drawing.Size(150, 50);
-            this.taskKillBtn.TabIndex = 8;
-            this.taskKillBtn.Text = "Kill task";
-            this.taskKillBtn.UseVisualStyleBackColor = true;
-            this.taskKillBtn.Click += new System.EventHandler(this.taskKillBtn_Click);
             // 
             // dgvResults
             // 
@@ -124,26 +136,26 @@
             this.dgvResults.RowHeadersWidth = 51;
             this.dgvResults.RowTemplate.Height = 24;
             this.dgvResults.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvResults.Size = new System.Drawing.Size(684, 581);
+            this.dgvResults.Size = new System.Drawing.Size(845, 489);
             this.dgvResults.TabIndex = 1;
             // 
-            // statusStrip1
+            // statusStrip
             // 
-            this.statusStrip1.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.statusStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
-            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.statusStrip.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.statusLabel});
-            this.statusStrip1.Location = new System.Drawing.Point(0, 634);
-            this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(938, 29);
-            this.statusStrip1.TabIndex = 2;
-            this.statusStrip1.Text = "statusStrip1";
+            this.statusStrip.Location = new System.Drawing.Point(3, 606);
+            this.statusStrip.Name = "statusStrip";
+            this.statusStrip.Size = new System.Drawing.Size(1153, 31);
+            this.statusStrip.TabIndex = 2;
+            this.statusStrip.Text = "statusStrip1";
             // 
             // statusLabel
             // 
-            this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Size = new System.Drawing.Size(56, 23);
+            this.statusLabel.Size = new System.Drawing.Size(62, 25);
             this.statusLabel.Text = "Status";
             // 
             // tabControlOutput
@@ -152,10 +164,10 @@
             this.tabControlOutput.Controls.Add(this.tabExpert);
             this.tabControlOutput.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControlOutput.Font = new System.Drawing.Font("Segoe UI", 12F);
-            this.tabControlOutput.Location = new System.Drawing.Point(237, 3);
+            this.tabControlOutput.Location = new System.Drawing.Point(291, 3);
             this.tabControlOutput.Name = "tabControlOutput";
             this.tabControlOutput.SelectedIndex = 0;
-            this.tabControlOutput.Size = new System.Drawing.Size(698, 628);
+            this.tabControlOutput.Size = new System.Drawing.Size(859, 536);
             this.tabControlOutput.TabIndex = 3;
             // 
             // tabSimple
@@ -164,7 +176,7 @@
             this.tabSimple.Location = new System.Drawing.Point(4, 37);
             this.tabSimple.Name = "tabSimple";
             this.tabSimple.Padding = new System.Windows.Forms.Padding(3);
-            this.tabSimple.Size = new System.Drawing.Size(690, 587);
+            this.tabSimple.Size = new System.Drawing.Size(851, 495);
             this.tabSimple.TabIndex = 0;
             this.tabSimple.Text = "Simple";
             this.tabSimple.UseVisualStyleBackColor = true;
@@ -175,7 +187,7 @@
             this.tabExpert.Location = new System.Drawing.Point(4, 37);
             this.tabExpert.Name = "tabExpert";
             this.tabExpert.Padding = new System.Windows.Forms.Padding(3);
-            this.tabExpert.Size = new System.Drawing.Size(573, 486);
+            this.tabExpert.Size = new System.Drawing.Size(851, 495);
             this.tabExpert.TabIndex = 1;
             this.tabExpert.Text = "Expert";
             this.tabExpert.UseVisualStyleBackColor = true;
@@ -184,142 +196,200 @@
             // 
             this.rtbLog.BackColor = System.Drawing.Color.White;
             this.rtbLog.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.rtbLog.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.rtbLog.Font = new System.Drawing.Font("Cascadia Mono SemiBold", 10.2F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.rtbLog.Location = new System.Drawing.Point(3, 3);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(567, 480);
+            this.rtbLog.Size = new System.Drawing.Size(845, 489);
             this.rtbLog.TabIndex = 0;
             this.rtbLog.Text = "";
             // 
             // tabControlActions
             // 
-            this.tabControlActions.Controls.Add(this.main);
-            this.tabControlActions.Controls.Add(this.dev);
+            this.tabControlActions.Controls.Add(this.mainButtonsTab);
+            this.tabControlActions.Controls.Add(this.extraButtonsTab);
             this.tabControlActions.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControlActions.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
             this.tabControlActions.Location = new System.Drawing.Point(3, 3);
             this.tabControlActions.Name = "tabControlActions";
             this.tabControlActions.SelectedIndex = 0;
-            this.tabControlActions.Size = new System.Drawing.Size(228, 628);
+            this.tabControlActions.Size = new System.Drawing.Size(282, 536);
             this.tabControlActions.TabIndex = 4;
             // 
-            // main
+            // mainButtonsTab
             // 
-            this.main.Controls.Add(this.mainButtonsLayoutPanel);
-            this.main.Location = new System.Drawing.Point(4, 34);
-            this.main.Name = "main";
-            this.main.Padding = new System.Windows.Forms.Padding(3);
-            this.main.Size = new System.Drawing.Size(220, 590);
-            this.main.TabIndex = 0;
-            this.main.Text = "Main";
-            this.main.UseVisualStyleBackColor = true;
+            this.mainButtonsTab.Controls.Add(this.mainButtonsLayoutPanel);
+            this.mainButtonsTab.Location = new System.Drawing.Point(4, 34);
+            this.mainButtonsTab.Name = "mainButtonsTab";
+            this.mainButtonsTab.Padding = new System.Windows.Forms.Padding(3);
+            this.mainButtonsTab.Size = new System.Drawing.Size(274, 498);
+            this.mainButtonsTab.TabIndex = 0;
+            this.mainButtonsTab.Text = "Main";
+            this.mainButtonsTab.UseVisualStyleBackColor = true;
             // 
             // mainButtonsLayoutPanel
             // 
+            this.mainButtonsLayoutPanel.AutoScroll = true;
             this.mainButtonsLayoutPanel.Controls.Add(this.btnUpdate);
             this.mainButtonsLayoutPanel.Controls.Add(this.btnCommon);
             this.mainButtonsLayoutPanel.Controls.Add(this.btnSpecial);
-            this.mainButtonsLayoutPanel.Controls.Add(this.btnCommonOffline);
+            this.mainButtonsLayoutPanel.Controls.Add(this.btnAging);
             this.mainButtonsLayoutPanel.Controls.Add(this.taskKillBtn);
-            this.mainButtonsLayoutPanel.Controls.Add(this.testBtn);
-            this.mainButtonsLayoutPanel.Controls.Add(this.button1);
             this.mainButtonsLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.mainButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.mainButtonsLayoutPanel.Name = "mainButtonsLayoutPanel";
-            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(214, 584);
+            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(268, 492);
             this.mainButtonsLayoutPanel.TabIndex = 9;
+            this.mainButtonsLayoutPanel.WrapContents = false;
             // 
-            // dev
+            // btnAging
             // 
-            this.dev.Location = new System.Drawing.Point(4, 34);
-            this.dev.Name = "dev";
-            this.dev.Padding = new System.Windows.Forms.Padding(3);
-            this.dev.Size = new System.Drawing.Size(181, 489);
-            this.dev.TabIndex = 1;
-            this.dev.Text = "Dev";
-            this.dev.UseVisualStyleBackColor = true;
+            this.btnAging.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnAging.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.btnAging.Depth = 0;
+            this.btnAging.HighEmphasis = true;
+            this.btnAging.Icon = null;
+            this.btnAging.Location = new System.Drawing.Point(4, 150);
+            this.btnAging.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnAging.MouseState = MaterialSkin.MouseState.HOVER;
+            this.btnAging.Name = "btnAging";
+            this.btnAging.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.btnAging.Size = new System.Drawing.Size(66, 36);
+            this.btnAging.TabIndex = 11;
+            this.btnAging.Text = "Aging";
+            this.btnAging.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.btnAging.UseAccentColor = false;
+            this.btnAging.UseVisualStyleBackColor = true;
             // 
-            // mainLayoutPanel
+            // taskKillBtn
             // 
-            this.mainLayoutPanel.ColumnCount = 2;
-            this.mainLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
-            this.mainLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 75F));
-            this.mainLayoutPanel.Controls.Add(this.tabControlActions, 0, 0);
-            this.mainLayoutPanel.Controls.Add(this.tabControlOutput, 1, 0);
-            this.mainLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.mainLayoutPanel.Location = new System.Drawing.Point(0, 0);
-            this.mainLayoutPanel.Name = "mainLayoutPanel";
-            this.mainLayoutPanel.RowCount = 1;
-            this.mainLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.mainLayoutPanel.Size = new System.Drawing.Size(938, 634);
-            this.mainLayoutPanel.TabIndex = 5;
+            this.taskKillBtn.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.taskKillBtn.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.taskKillBtn.Depth = 0;
+            this.taskKillBtn.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.taskKillBtn.HighEmphasis = true;
+            this.taskKillBtn.Icon = null;
+            this.taskKillBtn.Location = new System.Drawing.Point(4, 198);
+            this.taskKillBtn.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.taskKillBtn.MouseState = MaterialSkin.MouseState.HOVER;
+            this.taskKillBtn.Name = "taskKillBtn";
+            this.taskKillBtn.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.taskKillBtn.Size = new System.Drawing.Size(91, 36);
+            this.taskKillBtn.TabIndex = 13;
+            this.taskKillBtn.Text = "Kill task";
+            this.taskKillBtn.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.taskKillBtn.UseAccentColor = false;
+            this.taskKillBtn.UseVisualStyleBackColor = true;
+            this.taskKillBtn.Click += new System.EventHandler(this.taskKillBtn_Click);
             // 
-            // testBtn
+            // extraButtonsTab
             // 
-            this.testBtn.Location = new System.Drawing.Point(3, 283);
-            this.testBtn.Name = "testBtn";
-            this.testBtn.Size = new System.Drawing.Size(150, 67);
-            this.testBtn.TabIndex = 9;
-            this.testBtn.Text = "Test";
-            this.testBtn.UseVisualStyleBackColor = true;
-            this.testBtn.Click += new System.EventHandler(this.testBtn_Click);
+            this.extraButtonsTab.Controls.Add(this.extraButtonsLayoutPanel);
+            this.extraButtonsTab.Location = new System.Drawing.Point(4, 34);
+            this.extraButtonsTab.Name = "extraButtonsTab";
+            this.extraButtonsTab.Padding = new System.Windows.Forms.Padding(3);
+            this.extraButtonsTab.Size = new System.Drawing.Size(274, 498);
+            this.extraButtonsTab.TabIndex = 1;
+            this.extraButtonsTab.Text = "Extra";
+            this.extraButtonsTab.UseVisualStyleBackColor = true;
             // 
-            // button1
+            // extraButtonsLayoutPanel
             // 
-            this.button1.Location = new System.Drawing.Point(3, 356);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(8, 8);
-            this.button1.TabIndex = 10;
-            this.button1.Text = "button1";
-            this.button1.UseVisualStyleBackColor = true;
+            this.extraButtonsLayoutPanel.AutoScroll = true;
+            this.extraButtonsLayoutPanel.Controls.Add(this.btnCommonOffline);
+            this.extraButtonsLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.extraButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            this.extraButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
+            this.extraButtonsLayoutPanel.Name = "extraButtonsLayoutPanel";
+            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(268, 492);
+            this.extraButtonsLayoutPanel.TabIndex = 0;
+            this.extraButtonsLayoutPanel.WrapContents = false;
+            // 
+            // btnCommonOffline
+            // 
+            this.btnCommonOffline.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnCommonOffline.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.btnCommonOffline.Depth = 0;
+            this.btnCommonOffline.HighEmphasis = true;
+            this.btnCommonOffline.Icon = null;
+            this.btnCommonOffline.Location = new System.Drawing.Point(4, 6);
+            this.btnCommonOffline.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnCommonOffline.MouseState = MaterialSkin.MouseState.HOVER;
+            this.btnCommonOffline.Name = "btnCommonOffline";
+            this.btnCommonOffline.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.btnCommonOffline.Size = new System.Drawing.Size(160, 36);
+            this.btnCommonOffline.TabIndex = 8;
+            this.btnCommonOffline.Text = "Common (Offline)";
+            this.btnCommonOffline.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.btnCommonOffline.UseAccentColor = false;
+            this.btnCommonOffline.UseVisualStyleBackColor = true;
+            this.btnCommonOffline.Click += new System.EventHandler(this.btnCommonOffline_Click);
+            // 
+            // formTableLayoutPanel
+            // 
+            this.formTableLayoutPanel.ColumnCount = 2;
+            this.formTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.formTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 75F));
+            this.formTableLayoutPanel.Controls.Add(this.tabControlActions, 0, 0);
+            this.formTableLayoutPanel.Controls.Add(this.tabControlOutput, 1, 0);
+            this.formTableLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.formTableLayoutPanel.Location = new System.Drawing.Point(3, 64);
+            this.formTableLayoutPanel.Name = "formTableLayoutPanel";
+            this.formTableLayoutPanel.RowCount = 1;
+            this.formTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.formTableLayoutPanel.Size = new System.Drawing.Size(1153, 542);
+            this.formTableLayoutPanel.TabIndex = 5;
             // 
             // JatlasTestRunnerForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(938, 663);
-            this.Controls.Add(this.mainLayoutPanel);
-            this.Controls.Add(this.statusStrip1);
+            this.ClientSize = new System.Drawing.Size(1159, 640);
+            this.Controls.Add(this.formTableLayoutPanel);
+            this.Controls.Add(this.statusStrip);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MinimumSize = new System.Drawing.Size(800, 600);
             this.Name = "JatlasTestRunnerForm";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.Text = "ATT Runner";
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).EndInit();
-            this.statusStrip1.ResumeLayout(false);
-            this.statusStrip1.PerformLayout();
+            this.statusStrip.ResumeLayout(false);
+            this.statusStrip.PerformLayout();
             this.tabControlOutput.ResumeLayout(false);
             this.tabSimple.ResumeLayout(false);
             this.tabExpert.ResumeLayout(false);
             this.tabControlActions.ResumeLayout(false);
-            this.main.ResumeLayout(false);
+            this.mainButtonsTab.ResumeLayout(false);
             this.mainButtonsLayoutPanel.ResumeLayout(false);
-            this.mainLayoutPanel.ResumeLayout(false);
+            this.mainButtonsLayoutPanel.PerformLayout();
+            this.extraButtonsTab.ResumeLayout(false);
+            this.extraButtonsLayoutPanel.ResumeLayout(false);
+            this.extraButtonsLayoutPanel.PerformLayout();
+            this.formTableLayoutPanel.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
             }
 
         #endregion
-        private System.Windows.Forms.Button btnUpdate;
-        private System.Windows.Forms.Button btnCommon;
-        private System.Windows.Forms.Button btnSpecial;
-        private System.Windows.Forms.Button btnCommonOffline;
+        private MaterialSkin.Controls.MaterialButton btnUpdate;
+        private MaterialSkin.Controls.MaterialButton btnCommon;
+        private MaterialSkin.Controls.MaterialButton btnSpecial;
         private System.Windows.Forms.DataGridView dgvResults;
-        private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel statusLabel;
-        private System.Windows.Forms.Button taskKillBtn;
         private System.Windows.Forms.TabControl tabControlOutput;
         private System.Windows.Forms.TabPage tabSimple;
         private System.Windows.Forms.TabPage tabExpert;
         private System.Windows.Forms.RichTextBox rtbLog;
         private System.Windows.Forms.TabControl tabControlActions;
-        private System.Windows.Forms.TabPage main;
-        private System.Windows.Forms.TabPage dev;
-        private System.Windows.Forms.TableLayoutPanel mainLayoutPanel;
+        private System.Windows.Forms.TabPage mainButtonsTab;
+        private System.Windows.Forms.TabPage extraButtonsTab;
+        private System.Windows.Forms.TableLayoutPanel formTableLayoutPanel;
         private System.Windows.Forms.FlowLayoutPanel mainButtonsLayoutPanel;
-        private System.Windows.Forms.Button testBtn;
-        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.FlowLayoutPanel extraButtonsLayoutPanel;
+        private MaterialSkin.Controls.MaterialButton btnAging;
+        private MaterialSkin.Controls.MaterialButton taskKillBtn;
+        private MaterialSkin.Controls.MaterialButton btnCommonOffline;
         }
     }
