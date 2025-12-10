@@ -132,8 +132,7 @@ namespace ATT_Wrapper
                 {
                     Log.Information("Auto-enter callback triggered, sending Enter key");
                     _executor.SendInput("\r\n");
-                },
-                null  // No separate console log - everything goes to main log
+                }
             );
 
             try
@@ -374,8 +373,7 @@ namespace ATT_Wrapper
                 {
                     Log.Information("*** AUTO-ENTER TRIGGERED BY PAUSE DETECTION ***");
                     _executor.SendInput("\r\n");
-                },
-                null  // Use main log file
+                }
             );
 
             try
