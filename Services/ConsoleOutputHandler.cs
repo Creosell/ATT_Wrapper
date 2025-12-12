@@ -37,6 +37,14 @@ namespace ATT_Wrapper.Services
             @"Running task:\s+([^\x1b]+)(?:.*?)(\d+:\d+(?::\d+)?)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        // Captures: 
+        // Group 1: Operation context ("Switch network to" OR "Test bitrate... network:")
+        // Group 2: Network Name (e.g. "Ethernet", "Wi-Fi 5G")
+        // Group 3: Timer in format "1/120s"
+        private static readonly Regex NetworkTestRegex = new Regex(
+            @"Running task:\s+(Switch network to|Test bitrate.*?network:)\s+([^\x1b]+)(?:.*?)(\d+/\d+s)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
 
         public ConsoleOutputHandler(
             ILogParser parser,
@@ -52,12 +60,8 @@ namespace ATT_Wrapper.Services
             Log.Information("Initialized.");
             }
 
-        public void ProcessLine(string rawChunk, RichTextBox rtbLog)
+        private void StatusUpdate (string rawChunk)
             {
-            if (string.IsNullOrEmpty(rawChunk)) return;
-
-            LogRawChunk(rawChunk);
-
             // Task Progress: Ловим все строки Running task
             var match = RunningTaskRegex.Match(rawChunk);
 
@@ -71,6 +75,32 @@ namespace ATT_Wrapper.Services
 
                 _statusCallback?.Invoke($"Running: {taskName} {timer}");
                 }
+
+            var netMatch = NetworkTestRegex.Match(rawChunk);
+            if (netMatch.Success)
+                {
+                string opContext = netMatch.Groups[1].Value; // "Switch..." or "Test bitrate..."
+                string networkName = netMatch.Groups[2].Value.Trim();
+                string timer = netMatch.Groups[3].Value;
+
+                // Determine readable prefix based on operation
+                string prefix = opContext.StartsWith("Switch", StringComparison.OrdinalIgnoreCase)
+                    ? "Switching to"
+                    : "Bitrate Test";
+
+                _statusCallback?.Invoke($"Running: {prefix}: {networkName} {timer}");
+                return; // Exit early if matched
+                }
+
+            }
+
+        public void ProcessLine(string rawChunk, RichTextBox rtbLog)
+            {
+            if (string.IsNullOrEmpty(rawChunk)) return;
+
+            //LogRawChunk(rawChunk);
+
+            StatusUpdate(rawChunk);
 
             string linesToPrint = string.Empty;
 

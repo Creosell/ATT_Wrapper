@@ -7,6 +7,7 @@ using Serilog.Core;
 using Serilog.Events;
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 
@@ -40,8 +41,8 @@ namespace ATT_Wrapper
             materialSkinManager.ColorScheme = new ColorScheme(
                 Primary.Green800,
                 Primary.Green900,
-                Primary.Green900,
-                Accent.LightBlue200,
+                Primary.Green500,
+                Accent.Red700,
                 TextShade.WHITE
             );
 
@@ -63,7 +64,27 @@ namespace ATT_Wrapper
             // 3. ПРИМЕНЯЕМ ТЕМУ ТОЛЬКО К GRID и LOG (Кнопки теперь Material)
             // Мы передаем null вместо кнопок, так как MaterialSkin сам их красит
             ThemeManager.Apply(this, dgvResults, rtbLog, mainButtonsLayoutPanel, extraButtonsLayoutPanel);
+
+            // 1. Принудительное центрирование с учетом Панели Задач (Taskbar)
+
+            // Получаем экран, на котором сейчас находится форма (или курсор)
+            Screen screen = Screen.FromControl(this);
+
+            // WorkingArea — это область экрана БЕЗ панели задач
+            Rectangle workingArea = screen.WorkingArea;
+
+            // Вычисляем координаты левого верхнего угла для центра
+            int x = workingArea.X + ( workingArea.Width - this.Width ) / 2;
+            int y = workingArea.Y + ( workingArea.Height - this.Height ) / 2;
+
+            // Если по Y мы улезаем вверх (из-за заголовка), ставим 0
+            if (y < workingArea.Y) y = workingArea.Y;
+
+            // Применяем
+            this.Location = new Point(x, y);
             }
+
+
 
         private void SetupLogging()
             {
@@ -236,18 +257,18 @@ namespace ATT_Wrapper
             RunTest(new JatlasUpdateParser(), "update.bat", "");
 
         private void btnCommon_Click(object sender, EventArgs e) =>
-            RunTest(new JatlasCommonTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
                     "run-jatlas-auto.bat", "-l common --stage dev");
 
         private void btnSpecial_Click(object sender, EventArgs e) =>
-            RunTest(new JatlasCommonTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
                     "run-jatlas-auto.bat", "-l special --stage dev");
 
         private void btnAging_Click(object sender, EventArgs e) =>
             RunTest(new JatlasAgingParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
 
         private void btnCommonOffline_Click(object sender, EventArgs e) =>
-            RunTest(new JatlasCommonTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
                     "run-jatlas-auto.bat", "-l common --offline");
 
         private void taskKillBtn_Click(object sender, EventArgs e)
@@ -259,7 +280,7 @@ namespace ATT_Wrapper
         private void ToggleButtons(bool enabled)
             {
             foreach (Control c in this.Controls) EnableRecursive(c, enabled);
-            if (taskKillBtn != null) taskKillBtn.Enabled = true;
+            if (taskKillBtnMain != null) taskKillBtnMain.Enabled = true;
             }
 
         private void EnableRecursive(Control c, bool enabled)

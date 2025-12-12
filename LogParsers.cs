@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace ATT_Wrapper
@@ -9,12 +10,16 @@ namespace ATT_Wrapper
         }
 
     // 1. STANDARD TEST PARSER
-    public class JatlasCommonTestParser : ILogParser
+    public class JatlasTestParser : ILogParser
         {
         private int _lastUploaderRowIndex = -1;
         private readonly Action<int, string> _updateRowCallback;
+        private readonly List<string> _renderErrors = new List<string>();
+        private static readonly Regex RenderExRegex = new Regex(
+        @"RenderException\((.*?)\)\s+tpl:\s+(.*)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        public JatlasCommonTestParser(Action<int, string> updateRowCallback)
+        public JatlasTestParser(Action<int, string> updateRowCallback)
             {
             _updateRowCallback = updateRowCallback;
             }
@@ -47,9 +52,11 @@ namespace ATT_Wrapper
                     }
                 else if (name.Equals("NextCloud", StringComparison.OrdinalIgnoreCase))
                     {
-                    string desc = "Nextcloud: upload successful";
-                    if (msg.Contains(".json")) desc = "Nextcloud: json report";
-                    else if (msg.Contains(".html")) desc = "Nextcloud: html report";
+                    string desc = msg.Contains(".json") ? "Nextcloud: json report uploaded" :
+                                  msg.Contains(".html") ? "Nextcloud: html report uploaded" :
+                                  msg.Contains("Upload failed")? "Nextcloud: upload failed" :
+                                  "Nextcloud: upload successful";
+
 
                     onResult?.Invoke(status, desc);
 
@@ -93,14 +100,6 @@ namespace ATT_Wrapper
                 }
 
             return false;
-            }
-        }
-
-    public class JatlasSpecialTestParser : ILogParser
-        {
-        public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
-            {
-            throw new NotImplementedException();
             }
         }
 

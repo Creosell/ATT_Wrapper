@@ -43,11 +43,12 @@
             this.mainButtonsTab = new System.Windows.Forms.TabPage();
             this.mainButtonsLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.btnAging = new MaterialSkin.Controls.MaterialButton();
-            this.taskKillBtn = new MaterialSkin.Controls.MaterialButton();
+            this.taskKillBtnMain = new MaterialSkin.Controls.MaterialButton();
             this.extraButtonsTab = new System.Windows.Forms.TabPage();
             this.extraButtonsLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.btnCommonOffline = new MaterialSkin.Controls.MaterialButton();
             this.formTableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.taskKillBtnExtra = new MaterialSkin.Controls.MaterialButton();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).BeginInit();
             this.statusStrip.SuspendLayout();
             this.tabControlOutput.SuspendLayout();
@@ -145,9 +146,9 @@
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.statusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(3, 606);
+            this.statusStrip.Location = new System.Drawing.Point(3, 597);
             this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(1153, 31);
+            this.statusStrip.Size = new System.Drawing.Size(828, 26);
             this.statusStrip.TabIndex = 2;
             this.statusStrip.Text = "statusStrip1";
             // 
@@ -155,8 +156,8 @@
             // 
             this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Size = new System.Drawing.Size(62, 25);
-            this.statusLabel.Text = "Status";
+            this.statusLabel.Size = new System.Drawing.Size(62, 20);
+            this.statusLabel.Text = "Ready";
             // 
             // tabControlOutput
             // 
@@ -164,10 +165,10 @@
             this.tabControlOutput.Controls.Add(this.tabExpert);
             this.tabControlOutput.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControlOutput.Font = new System.Drawing.Font("Segoe UI", 12F);
-            this.tabControlOutput.Location = new System.Drawing.Point(291, 3);
+            this.tabControlOutput.Location = new System.Drawing.Point(210, 3);
             this.tabControlOutput.Name = "tabControlOutput";
             this.tabControlOutput.SelectedIndex = 0;
-            this.tabControlOutput.Size = new System.Drawing.Size(859, 536);
+            this.tabControlOutput.Size = new System.Drawing.Size(615, 542);
             this.tabControlOutput.TabIndex = 3;
             this.tabControlOutput.TabStop = false;
             // 
@@ -188,7 +189,7 @@
             this.tabExpert.Location = new System.Drawing.Point(4, 37);
             this.tabExpert.Name = "tabExpert";
             this.tabExpert.Padding = new System.Windows.Forms.Padding(3);
-            this.tabExpert.Size = new System.Drawing.Size(851, 495);
+            this.tabExpert.Size = new System.Drawing.Size(607, 501);
             this.tabExpert.TabIndex = 1;
             this.tabExpert.Text = "Expert";
             this.tabExpert.UseVisualStyleBackColor = true;
@@ -201,7 +202,7 @@
             this.rtbLog.Location = new System.Drawing.Point(3, 3);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(845, 489);
+            this.rtbLog.Size = new System.Drawing.Size(601, 495);
             this.rtbLog.TabIndex = 0;
             this.rtbLog.Text = "";
             // 
@@ -214,7 +215,7 @@
             this.tabControlActions.Location = new System.Drawing.Point(3, 3);
             this.tabControlActions.Name = "tabControlActions";
             this.tabControlActions.SelectedIndex = 0;
-            this.tabControlActions.Size = new System.Drawing.Size(282, 536);
+            this.tabControlActions.Size = new System.Drawing.Size(201, 542);
             this.tabControlActions.TabIndex = 4;
             this.tabControlActions.TabStop = false;
             // 
@@ -236,7 +237,7 @@
             this.mainButtonsLayoutPanel.Controls.Add(this.btnCommon);
             this.mainButtonsLayoutPanel.Controls.Add(this.btnSpecial);
             this.mainButtonsLayoutPanel.Controls.Add(this.btnAging);
-            this.mainButtonsLayoutPanel.Controls.Add(this.taskKillBtn);
+            this.mainButtonsLayoutPanel.Controls.Add(this.taskKillBtnMain);
             this.mainButtonsLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.mainButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
@@ -264,26 +265,26 @@
             this.btnAging.UseAccentColor = false;
             this.btnAging.UseVisualStyleBackColor = true;
             // 
-            // taskKillBtn
+            // taskKillBtnMain
             // 
-            this.taskKillBtn.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.taskKillBtn.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            this.taskKillBtn.Depth = 0;
-            this.taskKillBtn.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.taskKillBtn.HighEmphasis = true;
-            this.taskKillBtn.Icon = null;
-            this.taskKillBtn.Location = new System.Drawing.Point(4, 198);
-            this.taskKillBtn.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.taskKillBtn.MouseState = MaterialSkin.MouseState.HOVER;
-            this.taskKillBtn.Name = "taskKillBtn";
-            this.taskKillBtn.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.taskKillBtn.Size = new System.Drawing.Size(91, 36);
-            this.taskKillBtn.TabIndex = 13;
-            this.taskKillBtn.Text = "Kill task";
-            this.taskKillBtn.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            this.taskKillBtn.UseAccentColor = false;
-            this.taskKillBtn.UseVisualStyleBackColor = true;
-            this.taskKillBtn.Click += new System.EventHandler(this.taskKillBtn_Click);
+            this.taskKillBtnMain.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.taskKillBtnMain.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.taskKillBtnMain.Depth = 0;
+            this.taskKillBtnMain.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.taskKillBtnMain.HighEmphasis = true;
+            this.taskKillBtnMain.Icon = null;
+            this.taskKillBtnMain.Location = new System.Drawing.Point(4, 198);
+            this.taskKillBtnMain.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.taskKillBtnMain.MouseState = MaterialSkin.MouseState.HOVER;
+            this.taskKillBtnMain.Name = "taskKillBtnMain";
+            this.taskKillBtnMain.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.taskKillBtnMain.Size = new System.Drawing.Size(91, 36);
+            this.taskKillBtnMain.TabIndex = 13;
+            this.taskKillBtnMain.Text = "Kill task";
+            this.taskKillBtnMain.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.taskKillBtnMain.UseAccentColor = false;
+            this.taskKillBtnMain.UseVisualStyleBackColor = true;
+            this.taskKillBtnMain.Click += new System.EventHandler(this.taskKillBtn_Click);
             // 
             // extraButtonsTab
             // 
@@ -291,7 +292,7 @@
             this.extraButtonsTab.Location = new System.Drawing.Point(4, 34);
             this.extraButtonsTab.Name = "extraButtonsTab";
             this.extraButtonsTab.Padding = new System.Windows.Forms.Padding(3);
-            this.extraButtonsTab.Size = new System.Drawing.Size(274, 498);
+            this.extraButtonsTab.Size = new System.Drawing.Size(193, 504);
             this.extraButtonsTab.TabIndex = 1;
             this.extraButtonsTab.Text = "Extra";
             this.extraButtonsTab.UseVisualStyleBackColor = true;
@@ -300,11 +301,12 @@
             // 
             this.extraButtonsLayoutPanel.AutoScroll = true;
             this.extraButtonsLayoutPanel.Controls.Add(this.btnCommonOffline);
+            this.extraButtonsLayoutPanel.Controls.Add(this.taskKillBtnExtra);
             this.extraButtonsLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.extraButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.extraButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.extraButtonsLayoutPanel.Name = "extraButtonsLayoutPanel";
-            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(268, 492);
+            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(187, 498);
             this.extraButtonsLayoutPanel.TabIndex = 0;
             this.extraButtonsLayoutPanel.WrapContents = false;
             // 
@@ -340,19 +342,42 @@
             this.formTableLayoutPanel.Name = "formTableLayoutPanel";
             this.formTableLayoutPanel.RowCount = 1;
             this.formTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.formTableLayoutPanel.Size = new System.Drawing.Size(1153, 542);
+            this.formTableLayoutPanel.Size = new System.Drawing.Size(828, 548);
             this.formTableLayoutPanel.TabIndex = 5;
+            // 
+            // taskKillBtnExtra
+            // 
+            this.taskKillBtnExtra.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.taskKillBtnExtra.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.taskKillBtnExtra.Depth = 0;
+            this.taskKillBtnExtra.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.taskKillBtnExtra.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.taskKillBtnExtra.HighEmphasis = true;
+            this.taskKillBtnExtra.Icon = null;
+            this.taskKillBtnExtra.Location = new System.Drawing.Point(4, 54);
+            this.taskKillBtnExtra.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.taskKillBtnExtra.MouseState = MaterialSkin.MouseState.HOVER;
+            this.taskKillBtnExtra.Name = "taskKillBtnExtra";
+            this.taskKillBtnExtra.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.taskKillBtnExtra.Size = new System.Drawing.Size(160, 36);
+            this.taskKillBtnExtra.TabIndex = 14;
+            this.taskKillBtnExtra.Text = "Kill task";
+            this.taskKillBtnExtra.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.taskKillBtnExtra.UseAccentColor = false;
+            this.taskKillBtnExtra.UseVisualStyleBackColor = true;
+            this.taskKillBtnExtra.Click += new System.EventHandler(this.taskKillBtn_Click);
             // 
             // JatlasTestRunnerForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(1159, 640);
+            this.ClientSize = new System.Drawing.Size(999, 750);
             this.Controls.Add(this.formTableLayoutPanel);
             this.Controls.Add(this.statusStrip);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MinimumSize = new System.Drawing.Size(800, 600);
             this.Name = "JatlasTestRunnerForm";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "ATT Runner";
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).EndInit();
             this.statusStrip.ResumeLayout(false);
@@ -391,7 +416,8 @@
         private System.Windows.Forms.FlowLayoutPanel mainButtonsLayoutPanel;
         private System.Windows.Forms.FlowLayoutPanel extraButtonsLayoutPanel;
         private MaterialSkin.Controls.MaterialButton btnAging;
-        private MaterialSkin.Controls.MaterialButton taskKillBtn;
+        private MaterialSkin.Controls.MaterialButton taskKillBtnMain;
         private MaterialSkin.Controls.MaterialButton btnCommonOffline;
+        private MaterialSkin.Controls.MaterialButton taskKillBtnExtra;
         }
     }
