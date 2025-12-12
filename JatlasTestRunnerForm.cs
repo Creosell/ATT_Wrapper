@@ -8,6 +8,8 @@ using Serilog.Events;
 using System;
 using System.Diagnostics;
 using System.IO;
+using MaterialSkin;
+using MaterialSkin.Controls;
 using System.Windows.Forms;
 
 namespace ATT_Wrapper
