@@ -30,6 +30,14 @@ namespace ATT_Wrapper.Services
         private static readonly Regex WindowTitleRegex = new Regex(@"\x1B\]0;.*?\x07", RegexOptions.Compiled);
         private static readonly Regex CursorForwardRegex = new Regex(@"\x1B\[(\d*)C", RegexOptions.Compiled);
 
+        // Группа 1: Имя задачи (все до символа ESC)
+        // (?:.*?): Незахватывающая группа, лениво пропускаем ANSI-коды и пробелы
+        // Группа 2: Таймер (цифры:цифры и опционально :цифры)
+        private static readonly Regex RunningTaskRegex = new Regex(
+            @"Running task:\s+([^\x1b]+)(?:.*?)(\d+:\d+(?::\d+)?)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+
         public ConsoleOutputHandler(
             ILogParser parser,
             ResultsGridController gridController,
@@ -50,6 +58,20 @@ namespace ATT_Wrapper.Services
 
             LogRawChunk(rawChunk);
 
+            // Task Progress: Ловим все строки Running task
+            var match = RunningTaskRegex.Match(rawChunk);
+
+            if (match.Success)
+                {
+                // Группа 1: Имя задачи (например, "Check current Wifi RSSI")
+                string taskName = match.Groups[1].Value.Trim();
+
+                // Группа 2: Таймер (например, "0:00:00")
+                string timer = match.Groups[2].Value;
+
+                _statusCallback?.Invoke($"Running: {taskName} {timer}");
+                }
+
             string linesToPrint = string.Empty;
 
             lock (_bufferLock)
@@ -59,7 +81,7 @@ namespace ATT_Wrapper.Services
                 // Buffer overflow protection
                 if (_lineBuffer.Length > 50000)
                     {
-                    Log.Warning("[ConsoleOutputHandler] Buffer overflow. Force flush.");
+                    Log.Warning("Buffer overflow. Force flush.");
                     linesToPrint = _lineBuffer.ToString() + "\n";
                     _lineBuffer.Clear();
                     }

@@ -9,29 +9,18 @@ namespace ATT_Wrapper
         }
 
     // 1. STANDARD TEST PARSER
-    public class JatlasTestParser : ILogParser
+    public class JatlasCommonTestParser : ILogParser
         {
         private int _lastUploaderRowIndex = -1;
         private readonly Action<int, string> _updateRowCallback;
 
-        public JatlasTestParser(Action<int, string> updateRowCallback)
+        public JatlasCommonTestParser(Action<int, string> updateRowCallback)
             {
             _updateRowCallback = updateRowCallback;
             }
 
         public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
             {
-            // Task Progress: Ловим все строки Running task
-            var taskMatch = Regex.Match(line, @"Running task:\s+(.*)", RegexOptions.IgnoreCase);
-            if (taskMatch.Success)
-                {
-                string content = taskMatch.Groups[1].Value.Trim();
-                // Отрезаем таймер в конце (например " 0:00:23")
-                string cleanName = Regex.Replace(content, @"\s+\d+:\d+:\d+$", "");
-
-                onProgress?.Invoke($"Running: {cleanName}");
-                return false;
-                }
 
             // Report created
             var reportMatch = Regex.Match(line, @"<Report:([^>]+)>\s+created", RegexOptions.IgnoreCase);
@@ -107,6 +96,14 @@ namespace ATT_Wrapper
             }
         }
 
+    public class JatlasSpecialTestParser : ILogParser
+        {
+        public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
+            {
+            throw new NotImplementedException();
+            }
+        }
+
     // 2. UPDATER PARSER
     public class JatlasUpdateParser : ILogParser
         {
@@ -115,6 +112,7 @@ namespace ATT_Wrapper
             //if (line.Contains("Running with administrative")) { onResult?.Invoke("PASS", "Admin privileges"); return true; }
             if (line.Contains("No internet")) { onProgress?.Invoke("Waiting for internet..."); return false; }
             if (line.Contains("Internet connection detected")) { onResult?.Invoke("PASS", "Internet connected"); return true; }
+            onProgress?.Invoke("Updating...");
 
             if (line.Contains("Resetting branch")) { onProgress?.Invoke("Git: Pulling..."); return false; }
             if (line.Contains("Successfully pulled")) { onResult?.Invoke("PASS", "Repository updated"); return true; }

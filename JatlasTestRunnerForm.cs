@@ -8,8 +8,6 @@ using Serilog.Events;
 using System;
 using System.Diagnostics;
 using System.IO;
-using MaterialSkin;
-using MaterialSkin.Controls;
 using System.Windows.Forms;
 
 namespace ATT_Wrapper
@@ -238,18 +236,18 @@ namespace ATT_Wrapper
             RunTest(new JatlasUpdateParser(), "update.bat", "");
 
         private void btnCommon_Click(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasCommonTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
                     "run-jatlas-auto.bat", "-l common --stage dev");
 
         private void btnSpecial_Click(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasCommonTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
                     "run-jatlas-auto.bat", "-l special --stage dev");
 
         private void btnAging_Click(object sender, EventArgs e) =>
             RunTest(new JatlasAgingParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
 
         private void btnCommonOffline_Click(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasCommonTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
                     "run-jatlas-auto.bat", "-l common --offline");
 
         private void taskKillBtn_Click(object sender, EventArgs e)
@@ -278,95 +276,6 @@ namespace ATT_Wrapper
             _outputHandler?.Dispose();
             Log.CloseAndFlush();
             base.OnFormClosing(e);
-            }
-
-        private void testBtn_Click(object sender, EventArgs e)
-            {
-            Log.Information("=== ANSI COLOR TEST STARTED ===");
-
-            ToggleButtons(false);
-            rtbLog.Clear();
-            _gridController.Clear();
-            if (statusLabel != null) statusLabel.Text = "Running ANSI Test...";
-
-            InitializeExecutor();
-            _outputHandler?.Dispose();
-
-            // Generate test batch file
-            string tempBatPath = Path.Combine(Path.GetTempPath(), "test_colors.bat");
-            string esc = "\x1b";
-
-            string batchContent =
-                "@echo OFF" +
-                "ECHO === START ANSI TEST ===\r\n" +
-                "ECHO Normal Text Line\r\n" +
-                $"ECHO {esc}[32m[PASS] This text should be GREEN{esc}[0m\r\n" +
-                $"ECHO {esc}[31m[FAIL] This text should be RED{esc}[0m\r\n" +
-                $"ECHO {esc}[34m[INFO] This text should be BLUE{esc}[0m\r\n" +
-                $"ECHO {esc}[1;33m[WARN] This is BOLD YELLOW{esc}[0m\r\n" +
-                "ECHO.\r\n" +
-                "ECHO Testing Auto-Enter logic below:\r\n" +
-                "ECHO About to pause - should auto-continue...\r\n" +
-                "PAUSE\r\n" +
-                "ECHO.\r\n" +
-                "ECHO === AUTO-ENTER WORKED! ===\r\n" +
-                "ECHO Test completed successfully\r\n";
-
-            try
-                {
-                System.IO.File.WriteAllText(tempBatPath, batchContent, System.Text.Encoding.ASCII);
-                Log.Information($"Created test batch file: {tempBatPath}");
-
-                string readBack = File.ReadAllText(tempBatPath);
-                Log.Debug($"Batch file contents ({readBack.Length} chars): {readBack.Substring(0, Math.Min(200, readBack.Length))}...");
-                }
-            catch (Exception ex)
-                {
-                Log.Error(ex, "Failed to create test batch file");
-                MessageBox.Show($"Failed to create test file: {ex.Message}");
-                ToggleButtons(true);
-                return;
-                }
-
-            _outputHandler = new ConsoleOutputHandler(
-                new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
-                _gridController,
-                (status) => this.BeginInvoke((Action)( () =>
-                {
-                    if (statusLabel != null)
-                        statusLabel.Text = status;
-                    Log.Information($"[UI] Status updated: {status}");
-                } )),
-                () =>
-                {
-                    Log.Information("*** AUTO-ENTER TRIGGERED BY PAUSE DETECTION ***");
-                    _executor.SendInput("\r\n");
-                }
-            );
-
-            try
-                {
-                Environment.SetEnvironmentVariable("TERM", "xterm-256color");
-                Environment.SetEnvironmentVariable("FORCE_COLOR", "1");
-
-                string cmdPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
-                string commandLine = $"\"{cmdPath}\" /c \"{tempBatPath}\"";
-
-                Log.Information($"Starting ANSI test process...");
-                Log.Information($"CMD: {cmdPath}");
-                Log.Information($"Batch: {tempBatPath}");
-                Log.Information($"Command: {commandLine}");
-
-                _executor.Start(commandLine);
-
-                Log.Information("Test process started successfully");
-                }
-            catch (Exception ex)
-                {
-                Log.Error(ex, "ANSI Test failed to start");
-                MessageBox.Show($"Error: {ex.Message}");
-                ToggleButtons(true);
-                }
             }
 
         public class CallerEnricher : ILogEventEnricher

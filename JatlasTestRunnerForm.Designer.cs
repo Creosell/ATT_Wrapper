@@ -169,6 +169,7 @@
             this.tabControlOutput.SelectedIndex = 0;
             this.tabControlOutput.Size = new System.Drawing.Size(859, 536);
             this.tabControlOutput.TabIndex = 3;
+            this.tabControlOutput.TabStop = false;
             // 
             // tabSimple
             // 
@@ -215,6 +216,7 @@
             this.tabControlActions.SelectedIndex = 0;
             this.tabControlActions.Size = new System.Drawing.Size(282, 536);
             this.tabControlActions.TabIndex = 4;
+            this.tabControlActions.TabStop = false;
             // 
             // mainButtonsTab
             // 
