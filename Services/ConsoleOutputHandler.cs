@@ -247,7 +247,7 @@ namespace ATT_Wrapper.Services
                 try
                     {
                     _parser.ParseLine(cleanLine,
-                        (status, msg) => _gridController.HandleLogMessage(status, msg),
+                        (status, msg, group) => _gridController.HandleLogMessage(status, msg),
                         (progMsg) => _statusCallback?.Invoke(progMsg)
                     );
                     }
@@ -295,13 +295,6 @@ namespace ATT_Wrapper.Services
 
                 lineForUi = lineForUi.Replace("\x1B[K", "");
                 lineForUi = WindowTitleRegex.Replace(lineForUi, "");
-
-                //// Add visual space after FAIL
-                //string cleanCheck = AnsiAllRegex.Replace(lineForUi, "");
-                //if (cleanCheck.Contains("FAIL"))
-                //    {
-                //    lineForUi = Regex.Replace(lineForUi, @"(FAIL)(\S)", "$1  $2");
-                //    }
 
                 string cleanedForCheck = AnsiAllRegex.Replace(lineForUi, "");
 

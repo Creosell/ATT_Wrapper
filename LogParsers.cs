@@ -4,137 +4,226 @@ using System.Text.RegularExpressions;
 
 namespace ATT_Wrapper
     {
+    // Обновленный интерфейс с 3-мя аргументами в onResult (status, message, groupKey)
     public interface ILogParser
         {
-        bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress);
+        bool ParseLine(string line, Action<string, string, string> onResult, Action<string> onProgress);
         }
 
-    // 1. STANDARD TEST PARSER
+    // 1. STANDARD TEST PARSER (Ваш обновленный код)
     public class JatlasTestParser : ILogParser
         {
         private int _lastUploaderRowIndex = -1;
         private readonly Action<int, string> _updateRowCallback;
         private readonly List<string> _renderErrors = new List<string>();
-        private static readonly Regex RenderExRegex = new Regex(
-        @"RenderException\((.*?)\)\s+tpl:\s+(.*)",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        // Regex Definitions
+        private static readonly Regex RenderExRegex = new Regex(@"RenderException\((.*?)\)\s+tpl:\s+(.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex NetworkTestRegex = new Regex(@"Running task:\s+(Switch network to|Test bitrate.*?network:)\s+([^\x1b]+)(?:.*?)(\d+/\d+s)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex RunningTaskRegex = new Regex(@"Running task:\s+([^\x1b]+)(?:.*?)((?:\d+:\d+(?::\d+)?)|(?:\d+/\d+s))", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex ReportRegex = new Regex(@"<Report:([^>]+)>\s+created", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex UploaderRegex = new Regex(@"^\s*<Uploader:([^>]+)>\s+(.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex ResultRegex = new Regex(@"^\s*(PASS|FAIL|ERROR)\s+(.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public JatlasTestParser(Action<int, string> updateRowCallback)
             {
             _updateRowCallback = updateRowCallback;
             }
 
-        public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
+        public bool ParseLine(string line, Action<string, string, string> onResult, Action<string> onProgress)
             {
+            if (CheckAndFlushErrors(line, onResult)) return false;
+            if (TryHandleRenderErrors(line)) return true;
+            if (TryHandleTaskProgress(line, onProgress)) return false;
+            if (TryHandleReport(line, onResult, onProgress)) return true;
+            if (TryHandleUploaders(line, onResult)) return true;
+            if (TryHandleNextCloudMultiline(line)) return true;
+            if (TryHandleStandardResult(line, onResult)) return true;
 
-            // Report created
-            var reportMatch = Regex.Match(line, @"<Report:([^>]+)>\s+created", RegexOptions.IgnoreCase);
-            if (reportMatch.Success)
+            return false;
+            }
+
+        // --- Sub-Methods ---
+
+        private bool CheckAndFlushErrors(string line, Action<string, string, string> onResult)
+            {
+            if (line.Contains("Summary: Time:") && _renderErrors.Count > 0)
                 {
-                onResult?.Invoke("PASS", $"{reportMatch.Groups[1].Value} report created");
+                foreach (var err in _renderErrors)
+                    {
+                    // Передаем "Reports" или null, как вам удобнее для группировки ошибок
+                    onResult?.Invoke("ERROR", $"Render: {err}", "Reports");
+                    }
+                _renderErrors.Clear();
+                }
+            return false;
+            }
+
+        private bool TryHandleRenderErrors(string line)
+            {
+            var match = RenderExRegex.Match(line);
+            if (match.Success)
+                {
+                string errorDetails = match.Groups[1].Value.Replace("(", ": ").Replace("))", "");
+                string templateCode = match.Groups[2].Value.Trim();
+                _renderErrors.Add($"{errorDetails} | TPL: {templateCode}");
+                return true;
+                }
+            return false;
+            }
+
+        private bool TryHandleTaskProgress(string line, Action<string> onProgress)
+            {
+            var netMatch = NetworkTestRegex.Match(line);
+            if (netMatch.Success)
+                {
+                string opContext = netMatch.Groups[1].Value;
+                string networkName = netMatch.Groups[2].Value.Trim();
+                string timer = netMatch.Groups[3].Value;
+                string prefix = opContext.StartsWith("Switch", StringComparison.OrdinalIgnoreCase) ? "Switching to" : "Bitrate Test";
+
+                onProgress?.Invoke($"Running: {prefix}: {networkName} [{timer}]");
+                return true;
+                }
+
+            var match = RunningTaskRegex.Match(line);
+            if (match.Success)
+                {
+                string taskName = match.Groups[1].Value.Trim();
+                string timer = match.Groups[2].Value;
+                onProgress?.Invoke($"Running: {taskName} [{timer}]");
+                return true;
+                }
+            return false;
+            }
+
+        private bool TryHandleReport(string line, Action<string, string, string> onResult, Action<string> onProgress)
+            {
+            var match = ReportRegex.Match(line);
+            if (match.Success)
+                {
+                // Ключ "base report" для маппинга
+                onResult?.Invoke("PASS", $"{match.Groups[1].Value} report created", "base report");
                 onProgress?.Invoke("Uploading reports...");
                 return true;
                 }
+            return false;
+            }
 
-            // Uploaders
-            var uploaderMatch = Regex.Match(line, @"^\s*<Uploader:([^>]+)>\s+(.*)", RegexOptions.IgnoreCase);
-            if (uploaderMatch.Success)
+        private bool TryHandleUploaders(string line, Action<string, string, string> onResult)
+            {
+            var match = UploaderRegex.Match(line);
+            if (!match.Success) return false;
+
+            string name = match.Groups[1].Value;
+            string rawMsg = match.Groups[2].Value;
+
+            string status = rawMsg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) >= 0 ? "FAIL" : "PASS";
+            string displayMessage = rawMsg;
+
+            if (name.Equals("NextCloud", StringComparison.OrdinalIgnoreCase))
                 {
-                string name = uploaderMatch.Groups[1].Value;
-                string msg = uploaderMatch.Groups[2].Value;
-                string status = msg.ToLower().Contains("success") ? "PASS" :
-                               ( msg.ToLower().Contains("fail") ? "FAIL" : "INFO" );
-
-                if (name.Equals("FeishuBot", StringComparison.OrdinalIgnoreCase))
+                if (status == "FAIL")
                     {
-                    onResult?.Invoke(status, status == "PASS" ? "FeishuBot: notification sent" : $"FeishuBot: {msg}");
-                    _lastUploaderRowIndex = -1;
-                    }
-                else if (name.Equals("NextCloud", StringComparison.OrdinalIgnoreCase))
-                    {
-                    string desc = msg.Contains(".json") ? "Nextcloud: json report uploaded" :
-                                  msg.Contains(".html") ? "Nextcloud: html report uploaded" :
-                                  msg.Contains("Upload failed")? "Nextcloud: upload failed" :
-                                  "Nextcloud: upload successful";
-
-
-                    onResult?.Invoke(status, desc);
-
-                    if (!msg.Contains(".json") && !msg.Contains(".html"))
-                        _lastUploaderRowIndex = -2;
-                    else
-                        _lastUploaderRowIndex = -1;
+                    displayMessage = "NextCloud: Upload failed";
                     }
                 else
                     {
-                    onResult?.Invoke(status, $"{name}: {msg}");
-                    _lastUploaderRowIndex = -1;
+                    displayMessage = rawMsg.Contains(".json") ? "NextCloud: JSON" :
+                                     rawMsg.Contains(".html") ? "NextCloud: HTML" :
+                                     "NextCloud: Upload successful";
                     }
+
+                _lastUploaderRowIndex = ( !rawMsg.Contains(".json") && !rawMsg.Contains(".html") && status != "FAIL" ) ? -2 : -1;
+                }
+            else if (name.Equals("FeishuBot", StringComparison.OrdinalIgnoreCase))
+                {
+                displayMessage = status == "PASS" ? "FeishuBot: Succes" : "FeishuBot: Fail";
+                _lastUploaderRowIndex = -1;
+                }
+            else
+                {
+                displayMessage = status == "FAIL" ? $"{name}: Operation failed" : $"{name}: Success";
+                _lastUploaderRowIndex = -1;
+                }
+
+            // Ключ "uploader:..." для маппинга
+            string mappingKey = $"uploader:{name.ToLower()}";
+            onResult?.Invoke(status, displayMessage, mappingKey);
+
+            return true;
+            }
+
+        private bool TryHandleNextCloudMultiline(string line)
+            {
+            if (_lastUploaderRowIndex != -2) return false;
+
+            if (line.Contains(".json"))
+                {
+                _updateRowCallback?.Invoke(-1, "Nextcloud: json report");
+                _lastUploaderRowIndex = -1;
                 return true;
                 }
-
-            // NextCloud multiline fix
-            if (_lastUploaderRowIndex == -2)
+            if (line.Contains(".html"))
                 {
-                if (line.Contains(".json"))
-                    {
-                    _updateRowCallback?.Invoke(-1, "Nextcloud: json report");
-                    _lastUploaderRowIndex = -1;
-                    return true;
-                    }
-                if (line.Contains(".html"))
-                    {
-                    _updateRowCallback?.Invoke(-1, "Nextcloud: html report");
-                    _lastUploaderRowIndex = -1;
-                    return true;
-                    }
-                if (line.Trim().Length > 0 && !line.StartsWith(" ")) _lastUploaderRowIndex = -1;
-                }
-
-            // Standard PASS/FAIL
-            var resultMatch = Regex.Match(line, @"^\s*(PASS|FAIL|ERROR)\s+(.*)", RegexOptions.IgnoreCase);
-            if (resultMatch.Success)
-                {
-                onResult?.Invoke(resultMatch.Groups[1].Value.ToUpper(), resultMatch.Groups[2].Value.Trim());
+                _updateRowCallback?.Invoke(-1, "Nextcloud: html report");
+                _lastUploaderRowIndex = -1;
                 return true;
                 }
+            if (line.Trim().Length > 0 && !line.StartsWith(" "))
+                {
+                _lastUploaderRowIndex = -1;
+                }
+            return false;
+            }
 
+        private bool TryHandleStandardResult(string line, Action<string, string, string> onResult)
+            {
+            var match = ResultRegex.Match(line);
+            if (match.Success)
+                {
+                // Группа null (определяется контроллером)
+                onResult?.Invoke(match.Groups[1].Value.ToUpper(), match.Groups[2].Value.Trim(), null);
+                return true;
+                }
             return false;
             }
         }
 
-    // 2. UPDATER PARSER
+    // 2. UPDATER PARSER (ИСПРАВЛЕНА СИГНАТУРА)
     public class JatlasUpdateParser : ILogParser
         {
-        public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
+        // Добавлен аргумент string group (Action<string, string, string>)
+        public bool ParseLine(string line, Action<string, string, string> onResult, Action<string> onProgress)
             {
-            //if (line.Contains("Running with administrative")) { onResult?.Invoke("PASS", "Admin privileges"); return true; }
+            // Везде добавляем null третьим аргументом, так как для Update группа не критична
             if (line.Contains("No internet")) { onProgress?.Invoke("Waiting for internet..."); return false; }
-            if (line.Contains("Internet connection detected")) { onResult?.Invoke("PASS", "Internet connected"); return true; }
-            onProgress?.Invoke("Updating...");
+            if (line.Contains("Internet connection detected")) { onResult?.Invoke("PASS", "Internet connected", null); return true; }
 
             if (line.Contains("Resetting branch")) { onProgress?.Invoke("Git: Pulling..."); return false; }
-            if (line.Contains("Successfully pulled")) { onResult?.Invoke("PASS", "Repository updated"); return true; }
-            if (line.Contains("Failed to pull")) { onResult?.Invoke("FAIL", "Git: Pull failed"); return true; }
-            if (line.Contains("Already up to date")) { onResult?.Invoke("PASS", "Repository has no updates"); return true; }
+            if (line.Contains("Successfully pulled")) { onResult?.Invoke("PASS", "Repository updated", null); return true; }
+            if (line.Contains("Failed to pull")) { onResult?.Invoke("FAIL", "Git: Pull failed", null); return true; }
+            if (line.Contains("Already up to date")) { onResult?.Invoke("PASS", "Repository has no updates", null); return true; }
 
             if (line.Contains("Installing dependencies")) { onProgress?.Invoke("Installing dependencies..."); return false; }
-            if (line.Contains("Installing the current project")) { onResult?.Invoke("PASS", "Dependencies installed"); return true; }
-            if (line.Contains("Update finished")) { onResult?.Invoke("PASS", "Update finished"); return true; }
+            if (line.Contains("Installing the current project")) { onResult?.Invoke("PASS", "Dependencies installed", null); return true; }
+            if (line.Contains("Update finished")) { onResult?.Invoke("PASS", "Update finished", null); return true; }
 
             return false;
             }
         }
 
-    // 3. AGING PARSER
+    // 3. AGING PARSER (ИСПРАВЛЕНА СИГНАТУРА)
     public class JatlasAgingParser : ILogParser
         {
-        public bool ParseLine(string line, Action<string, string> onResult, Action<string> onProgress)
+        // Добавлен аргумент string group (Action<string, string, string>)
+        public bool ParseLine(string line, Action<string, string, string> onResult, Action<string> onProgress)
             {
             var resultMatch = Regex.Match(line, @"^\s*(PASS|FAIL|ERROR)\s+(.*)", RegexOptions.IgnoreCase);
             if (resultMatch.Success)
                 {
-                onResult?.Invoke(resultMatch.Groups[1].Value.ToUpper(), resultMatch.Groups[2].Value.Trim());
+                // Третий аргумент null
+                onResult?.Invoke(resultMatch.Groups[1].Value.ToUpper(), resultMatch.Groups[2].Value.Trim(), null);
                 return true;
                 }
             if (line.Contains("Cycle:"))

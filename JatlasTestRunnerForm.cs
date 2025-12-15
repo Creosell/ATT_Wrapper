@@ -28,46 +28,50 @@ namespace ATT_Wrapper
             {
             InitializeComponent();
 
-            // 2. Инициализация MaterialSkin
+            // Visual setup
+            // Инициализация MaterialSkin
             materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
             materialSkinManager.Theme = MaterialSkinManager.Themes.LIGHT;
 
-            // 3. Цветовая палитра Material Design 3 (Blue Baseline)
-            // Primary: #00639B (Deep Blue)
-            // DarkPrimary: #004A73
-            // LightPrimary: #D1E4FF
-            // Accent: #D1E4FF (Secondary Container)
+            // Цветовая палитра Material Design
             materialSkinManager.ColorScheme = new ColorScheme(
-                Primary.Green800,
-                Primary.Green900,
-                Primary.Green500,
+                Primary.BlueGrey500,
+                Primary.BlueGrey700,
+                Primary.LightBlue100,
                 Accent.Red700,
                 TextShade.WHITE
             );
+
+            // Custom theme manager
+            ThemeManager.Apply(this, dgvResults, rtbLog, mainButtonsLayoutPanel, extraButtonsLayoutPanel);
+
+            // Center window
+            CenterAppWindow(this);
 
             // Setup logs directory...
             string logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
             if (!Directory.Exists(logDirectory)) Directory.CreateDirectory(logDirectory);
             _mainLogPath = Path.Combine(logDirectory, "jatlas_runner.log");
-
             SetupLogging();
 
-            _executor = new ProcessExecutor();
+            //// Executor setup
+            //_executor = new ProcessExecutor();
+            //_executor.OnOutputReceived += HandleOutput;
+            //_executor.OnExited += HandleExit;
+
+            // Mapping setup
             string mappingPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mappings.json");
             _mapper = new MappingManager(mappingPath);
+
+            // ResultGrid setup
             _gridController = new ResultsGridController(dgvResults, _mapper);
 
-            _executor.OnOutputReceived += HandleOutput;
-            _executor.OnExited += HandleExit;
+            }
 
-            // 3. ПРИМЕНЯЕМ ТЕМУ ТОЛЬКО К GRID и LOG (Кнопки теперь Material)
-            // Мы передаем null вместо кнопок, так как MaterialSkin сам их красит
-            ThemeManager.Apply(this, dgvResults, rtbLog, mainButtonsLayoutPanel, extraButtonsLayoutPanel);
+        private void CenterAppWindow(JatlasTestRunnerForm jatlasTestRunnerForm)
+            {
 
-            // 1. Принудительное центрирование с учетом Панели Задач (Taskbar)
-
-            // Получаем экран, на котором сейчас находится форма (или курсор)
             Screen screen = Screen.FromControl(this);
 
             // WorkingArea — это область экрана БЕЗ панели задач
@@ -83,8 +87,6 @@ namespace ATT_Wrapper
             // Применяем
             this.Location = new Point(x, y);
             }
-
-
 
         private void SetupLogging()
             {
