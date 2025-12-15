@@ -221,5 +221,38 @@
     "pattern": "battery wear",
     "group": "Battery",
     "ufn": "Wear level"
+  },
+
+  // Reports uplaod group
+  {
+    "pattern": "base report",
+    "group": "Reports upload",
+    "ufn": "Base report"
+  },
+  {
+    "pattern": "NextCloud: JSON",
+    "group": "Reports upload",
+    "ufn": "Nextcloud JSON report"
+  },
+  {
+    "pattern": "NextCloud: HTML",
+    "group": "Reports upload",
+    "ufn": "Nextcloud HTML report"
+  },
+  {
+    "pattern": "NextCloud: Upload failed",
+    "group": "Reports upload",
+    "ufn": "Nextcloud report"
+  },
+  {
+    "pattern": "feishubot",
+    "group": "Reports upload",
+    "ufn": "Feishu report"
+  },
+  {
+    "pattern": "uploader:webhook",
+    "group": "Reports upload",
+    "ufn": "Calydon report"
   }
+
 ]

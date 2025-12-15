@@ -39,8 +39,8 @@ namespace ATT_Wrapper
             // LightPrimary: #D1E4FF
             // Accent: #D1E4FF (Secondary Container)
             materialSkinManager.ColorScheme = new ColorScheme(
-                Primary.Green800,
-                Primary.Green900,
+                Primary.BlueGrey500,
+                Primary.BlueGrey700,
                 Primary.Green500,
                 Accent.Red700,
                 TextShade.WHITE
