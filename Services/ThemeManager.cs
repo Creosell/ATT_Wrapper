@@ -60,7 +60,7 @@ namespace ATT_Wrapper.Services
                     if (flp != null)
                         {
                         // Проверяем, находится ли панель внутри tabControlActions (на любой глубине)
-                        shouldStretch = IsDescendantOf(flp, "tabControlActions", btn.Text);
+                        shouldStretch = IsDescendantOf(flp, "tabControlActions");
                         }
 
                     if (shouldStretch && flp != null)
@@ -95,7 +95,7 @@ namespace ATT_Wrapper.Services
         /// Проверяет, является ли startControl потомком (находится внутри) контрола с именем targetName.
         /// Поднимается по цепочке Parent -> Parent -> Parent.
         /// </summary>
-        private static bool IsDescendantOf(Control startControl, string targetName, string btnNameForLog)
+        private static bool IsDescendantOf(Control startControl, string targetName)
             {
             Control current = startControl;
             StringBuilder pathLog = new StringBuilder();
@@ -114,10 +114,6 @@ namespace ATT_Wrapper.Services
                 }
 
             pathLog.Append("null");
-
-            // Если мы дошли до null, значит targetName в цепочке нет.
-            // Логгируем фактическую цепочку, чтобы понять, почему не сработало.
-            // Log.Debug($"[ThemeManager] Stretching skipped for '{btnNameForLog}'. Target '{targetName}' not found. Chain: {pathLog}");
 
             return false;
             }

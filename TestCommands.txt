@@ -1,0 +1,14 @@
+﻿SDMN-M27
+.\suites\SDMN-M27.yaml -mr "C:\Users\Pavel\Downloads\Wrapper_test_reports\SDMN-M27\SDMN-M27-Good.json" -l common --offline
+.\suites\SDMN-M27.yaml -mr "C:\Users\Pavel\Downloads\Wrapper_test_reports\SDMN-M27\SDMN-M27-RenderErrors.json" -l common --offline
+.\suites\SDMN-M27.yaml -mr "C:\Users\Pavel\Downloads\Wrapper_test_reports\SDMN-M27\SDMN-M27-Special.json" -l special --offline
+
+SDNB 14X
+"\".\\suites\\SDNB-14X.yaml\" -mr \"C:\\Users\\Pavel\\Downloads\\Wrapper_test_reports\\SDNB-14X\\SDNB 14X.json\" -l common --offline"
+
+SDNB-14iA
+.\suites\SDNB-14iA.yaml -mr "C:\Users\Pavel\Downloads\Wrapper_test_reports\SDNB-14iA\SDNB-14iA-Good.json" -l common --offline
+
+SDNB-15iA
+.\suites\SDNB-15iA.yaml -mr "C:\Users\Pavel\Downloads\Wrapper_test_reports\SDNB-15iA\SDNB-15iA-Good.json" -l common --offline
+

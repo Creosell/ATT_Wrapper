@@ -1,9 +1,43 @@
 [
+  // Update parameters group
+  {
+    "pattern": "Internet connected",
+    "group": "Update",
+    "ufn": "Internet connection"
+  },
+  {
+    "pattern": "Repository update",
+    "group": "Update",
+    "ufn": "Repository update"
+  },
+  {
+    "pattern": "Dependencies update",
+    "group": "Update",
+    "ufn": "Dependency updated"
+  },
+  {
+    "pattern": "Dependencies installed",
+    "group": "Update",
+    "ufn": "Dependencies update"
+  },
+  {
+    "pattern": "Update finished",
+    "group": "Update",
+    "ufn": "Update finished"
+  },
+
+  // Wi-FI signal parameters group
+  {
+    "pattern": "wifi signal strength",
+    "group": "Wi-Fi signal",
+    "ufn": "Wi-Fi signal strength"
+  },
+
   // CPU parameters group
   {
     "pattern": "cpu name",
     "group": "CPU",
-    "ufn": "Model Name"
+    "ufn": "Model"
   },
   {
     "pattern": "cpu revision",
@@ -20,7 +54,7 @@
   {
     "pattern": "bios date",
     "group": "BIOS",
-    "ufn": "Release Date"
+    "ufn": "Date"
   },
   {
     "pattern": "bios version",
@@ -114,6 +148,13 @@
     "ufn": "DIMM Check"
   },
 
+  // Cpu clock
+  {
+    "pattern": "cpu clock",
+    "group": "CPU",
+    "ufn": "CPU clock"
+  },
+
   // Display parameters group
   {
     "pattern": "monitor id",
@@ -121,7 +162,17 @@
     "ufn": "Monitor ID"
   },
   {
+    "pattern": "monitor.Model",
+    "group": "Display",
+    "ufn": "Monitor ID"
+  },
+  {
     "pattern": "monitor manufacturer",
+    "group": "Display",
+    "ufn": "Monitor manufacturer"
+  },
+  {
+    "pattern": "monitor.manufacturer",
     "group": "Display",
     "ufn": "Monitor manufacturer"
   },
@@ -184,6 +235,11 @@
     "ufn": "PD Firmware"
   },
   {
+    "pattern": "power delivery board",
+    "group": "Peripherals",
+    "ufn": "PD Firmware"
+  },
+  {
     "pattern": "usb",
     "group": "Peripherals",
     "ufn": "USB Ports"
@@ -227,7 +283,12 @@
   {
     "pattern": "base report",
     "group": "Reports upload",
-    "ufn": "Base report"
+    "ufn": "Base report created"
+  },
+  {
+    "pattern": "template report created",
+    "group": "Reports upload",
+    "ufn": "Template report"
   },
   {
     "pattern": "NextCloud: JSON",
@@ -242,17 +303,105 @@
   {
     "pattern": "NextCloud: Upload failed",
     "group": "Reports upload",
-    "ufn": "Nextcloud report"
+    "ufn": "Nextcloud report uploaded"
   },
   {
     "pattern": "feishubot",
     "group": "Reports upload",
-    "ufn": "Feishu report"
+    "ufn": "Feishu report uploaded"
+  },
+  {
+    "pattern": "feishu report created",
+    "group": "Reports upload",
+    "ufn": "Feishu report created"
+  },
+  {
+    "pattern": "calydon report",
+    "group": "Reports upload",
+    "ufn": "Calydon report created"
   },
   {
     "pattern": "uploader:webhook",
     "group": "Reports upload",
-    "ufn": "Calydon report"
-  }
+    "ufn": "Calydon report uploaded"
+  },
 
+  // SPECIAL TEST
+  // Ethernet parameters group
+  {
+    "pattern": "Switching to Ethernet",
+    "group": "Ethernet",
+    "ufn": "Connecting Ethernet"
+  },
+  {
+    "pattern": "Ethernet bitrate",
+    "group": "Ethernet",
+    "ufn": "Bitrate"
+  },
+
+  // Wi-Fi parameters group
+  {
+    "pattern": "Switching to Wi-Fi QA_2G",
+    "group": "Wi-Fi 2.4 GHz",
+    "ufn": "Connecting Wi-Fi"
+  },
+  {
+    "pattern": "Wi-Fi 2GHz bitrate",
+    "group": "Wi-Fi 2.4 GHz",
+    "ufn": "Bitrate"
+  },
+  {
+    "pattern": "Switching to Wi-Fi QA_5G",
+    "group": "Wi-Fi 5 GHz",
+    "ufn": "Connecting Wi-Fi"
+  },
+  {
+    "pattern": "Wi-Fi 5GHz bitrate",
+    "group": "Wi-Fi 5 GHz",
+    "ufn": "Bitrate"
+  },
+
+  //Membench test parameters group
+  {
+    "pattern": "Memory read",
+    "group": "Memory",
+    "ufn": "Read speed"
+  },
+  {
+    "pattern": "Memory write",
+    "group": "Memory",
+    "ufn": "Write speed"
+  },
+  {
+    "pattern": "Memory copy",
+    "group": "Memory",
+    "ufn": "Copy speed"
+  },
+  {
+    "pattern": "Memory latency",
+    "group": "Memory",
+    "ufn": "Latency"
+  },
+
+  //AGING TEST
+  {
+    "pattern": "DiskSpd SEQ1M Q1T1 Read",
+    "group": "Memory",
+    "ufn": "Sequential read"
+  },
+  {
+    "pattern": "DiskSpd SEQ1M Q1T1 Write",
+    "group": "Memory",
+    "ufn": "Sequential write"
+  },
+  {
+    "pattern": "DiskSpd RND4K Q1T1 Read",
+    "group": "Memory",
+    "ufn": "Random read"
+  },
+  {
+    "pattern": "DiskSpd RND4K Q1T1 Write",
+    "group": "Memory",
+    "ufn": "Random write"
+  }
 ]

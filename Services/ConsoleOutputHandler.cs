@@ -60,7 +60,7 @@ namespace ATT_Wrapper.Services
             Log.Information("Initialized.");
             }
 
-        private void StatusUpdate (string rawChunk)
+        private void StatusUpdate(string rawChunk)
             {
             // Task Progress: Ловим все строки Running task
             var match = RunningTaskRegex.Match(rawChunk);
