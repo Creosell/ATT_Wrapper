@@ -61,24 +61,30 @@ namespace ATT_Wrapper.Components
                 }
 
             AddChildRow(groupRow, status, ufn ?? message);
+
+            ClearSelection();
             }
 
         public void UpdateLastRow(string message)
             {
             if (_grid.Rows.Count > 0)
                 _grid.Rows[_grid.Rows.Count - 1].Cells[1].Value = message;
+
+            ClearSelection();
             }
 
         private void CreateGroup(string name)
             {
             int idx = _grid.Rows.Add($"▶ PASS", $"{name}: OK");
             var row = _grid.Rows[idx];
-            row.DefaultCellStyle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            row.DefaultCellStyle.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
             row.DefaultCellStyle.BackColor = Color.FromArgb(245, 245, 245);
             SetRowColor(row, "PASS", isGroup: true);
 
             _groupRowsCache[name] = row;
             _groupChildren[row] = new List<DataGridViewRow>();
+
+            ClearSelection();
             }
 
         private void UpdateGroupToFail(DataGridViewRow row, string name)
@@ -90,6 +96,8 @@ namespace ATT_Wrapper.Components
                 SetRowColor(row, "FAIL", isGroup: true);
                 }
             ToggleGroup(row, forceExpand: true);
+
+            ClearSelection();
             }
 
         private void AddChildRow(DataGridViewRow groupRow, string status, string message)
@@ -102,13 +110,16 @@ namespace ATT_Wrapper.Components
             var childRow = _grid.Rows[insertIndex];
 
             SetRowColor(childRow, status, isGroup: false);
+            childRow.Cells[0].Style.Padding = new Padding(25, 0, 0, 0);
             childRow.Cells[1].Style.Padding = new Padding(25, 0, 0, 0);
-            childRow.Cells[1].Style.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+            childRow.Cells[1].Style.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
 
             children.Add(childRow);
 
             bool isExpanded = groupRow.Cells[0].Value.ToString().Contains("▼");
             childRow.Visible = isExpanded;
+
+            ClearSelection();
             }
 
         private void AddFlatRow(string status, string message)
@@ -116,8 +127,7 @@ namespace ATT_Wrapper.Components
             int idx = _grid.Rows.Add(status, message);
             SetRowColor(_grid.Rows[idx], status);
             _grid.FirstDisplayedScrollingRowIndex = idx;
-            _grid.ClearSelection();
-            _grid.CurrentCell = null;
+            ClearSelection();
             }
 
         private void OnCellClick(object sender, DataGridViewCellEventArgs e)
@@ -125,6 +135,8 @@ namespace ATT_Wrapper.Components
             if (e.RowIndex < 0) return;
             var row = _grid.Rows[e.RowIndex];
             if (_groupChildren.ContainsKey(row)) ToggleGroup(row);
+
+            ClearSelection();
             }
 
         private void ToggleGroup(DataGridViewRow row, bool? forceExpand = null)
@@ -140,20 +152,29 @@ namespace ATT_Wrapper.Components
             row.Cells[0].Value = ( newState ? "▼ " : "▶ " ) + txt;
 
             foreach (var child in children) child.Visible = newState;
+
+            ClearSelection();
             }
 
         private void SetRowColor(DataGridViewRow row, string status, bool isGroup = false)
             {
-            Color bg = isGroup ? ( status == "FAIL" ? Color.FromArgb(255, 235, 235) : Color.FromArgb(245, 245, 245) )
-                               : ( status == "FAIL" ? Color.FromArgb(255, 230, 230) : Color.White );
+            Color bg = isGroup ? ( ( status == "FAIL" ) || ( status == "ERROR" ) ? Color.FromArgb(255, 235, 235) : Color.FromArgb(245, 245, 245) )
+                               : ( ( status == "FAIL" ) || ( status == "ERROR" ) ? Color.FromArgb(255, 230, 230) : Color.White );
 
-            Color fg = status == "FAIL" ? Color.FromArgb(180, 0, 0) :
+            Color fg = (status == "FAIL") || (status == "ERROR") ? Color.FromArgb(180, 0, 0) :
                        status == "PASS" ? Color.FromArgb(0, 100, 0) : Color.Black;
 
             if (status == "PASS" && !isGroup) bg = Color.FromArgb(230, 250, 230);
 
             row.DefaultCellStyle.BackColor = bg;
             row.DefaultCellStyle.ForeColor = fg;
+
+            ClearSelection();
+            }
+        private void ClearSelection()
+            {
+            _grid.ClearSelection();
+            _grid.CurrentCell = null;
             }
         }
     }
