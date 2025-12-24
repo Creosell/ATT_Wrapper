@@ -45,9 +45,6 @@ namespace ATT_Wrapper.Components
             _grid.Columns.Clear();
             _grid.RowHeadersVisible = false;
             _grid.ColumnHeadersVisible = false;
-            _grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
-            _grid.RowTemplate.MinimumHeight = 10;
-            _grid.RowTemplate.Height = 12;
             _grid.Columns.Add("Status", "Status");
             _grid.Columns.Add("Component", "Component");
             _grid.Columns[0].FillWeight = 15;
