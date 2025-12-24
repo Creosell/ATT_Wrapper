@@ -147,6 +147,7 @@
     <Compile Include="Services\ConsoleOutputHandler.cs" />
     <Compile Include="Services\ProcessExecutor.cs" />
     <Compile Include="Services\ThemeManager.cs" />
+    <Compile Include="Services\UpdateChecker.cs" />
     <EmbeddedResource Include="JatlasTestRunnerForm.resx">
       <DependentUpon>JatlasTestRunnerForm.cs</DependentUpon>
       <SubType>Designer</SubType>

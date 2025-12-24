@@ -9,6 +9,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ATT_Wrapper
@@ -24,6 +25,7 @@ namespace ATT_Wrapper
         private string _mainLogPath;
         private ConsoleOutputHandler _outputHandler;
         private ToolStripLoadingSpinner _loadingSpinner;
+        private Action _onTaskFinished;
 
         public JatlasTestRunnerForm()
             {
@@ -48,6 +50,10 @@ namespace ATT_Wrapper
             SetupFocus();
             }
 
+        private async void JatlasTestRunnerForm_Load(object sender, EventArgs e)
+            {
+            await CheckUpdateStatusAsync();
+            }
 
         private void CenterAppWindow()
             {
@@ -147,10 +153,57 @@ namespace ATT_Wrapper
             _executor.OnExited += HandleExit;
             }
 
+        private async Task CheckUpdateStatusAsync()
+            {
+            try
+                {
+                // Создаем экземпляр нашего нового сервиса
+                var checker = new UpdateChecker();
+
+                SetStatus("Checking updates...");
+
+                bool isUpdateAvailable = await checker.IsUpdateAvailable();
+
+                if (isUpdateAvailable)
+                    {
+                    // Если есть обновление - выделяем кнопку
+                    btnUpdate.Text = "UPDATE AVAILABLE";
+                    btnUpdate.UseAccentColor = true; 
+                    }
+                else
+                    {
+                    // Если обновлений нет, возвращаем обычный текст
+                    btnUpdate.Text = "Update";
+                    btnUpdate.UseAccentColor = false;
+                    }
+                SetStatus("Ready");
+                }
+            catch (Exception ex)
+                {
+                // Если что-то пошло не так (нет интернета и т.д.), просто логируем и оставляем всё как есть
+                Console.WriteLine($"Update check failed: {ex.Message}");
+                btnUpdate.Text = "Update failed";
+                SetStatus("Ready");
+                }
+            }
+
+        private void SetStatus(string status)
+            {
+            this.BeginInvoke((Action)( () =>
+            {
+                if (statusLabel != null)
+                    {
+                    statusLabel.Text = status;
+                    }
+                ToggleButtons(true);
+            } ));
+            }
+
         // --- RUN LOGIC ---
 
-        private void RunTest(ILogParser parser, string script, string args)
+        private void RunTest(ILogParser parser, string script, string args, Action onFinished = null)
             {
+            _onTaskFinished = onFinished;
             ToggleButtons(false);
             _gridController.Clear();
             rtbLog.Clear();
@@ -212,6 +265,7 @@ namespace ATT_Wrapper
                 Log.Information($"  Args: {args}");
                 Log.Information($"  Full path: {fullPath}");
                 Log.Information($"  Command: {commandLine}");
+                Log.Information($"  On Finished: {onFinished}");
 
                 _executor.Start(commandLine);
 
@@ -272,12 +326,23 @@ namespace ATT_Wrapper
             {
                 if (statusLabel != null) statusLabel.Text = "Ready";
                 ToggleButtons(true);
+                if (_onTaskFinished != null)
+                    {
+                    _onTaskFinished.Invoke();
+                    _onTaskFinished = null;
+                    }
             } ));
             }
 
         // --- BUTTONS ---
         private void UpdateATT(object sender, EventArgs e) =>
-            RunTest(new JatlasUpdateParser(), "update.bat", "");
+            RunTest(
+                new JatlasUpdateParser(),
+                "update.bat",
+                "",
+                // Передаем действие, которое выполнится после закрытия консоли
+                async () => await CheckUpdateStatusAsync()
+            );
 
         private void CommonATT(object sender, EventArgs e) =>
             RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
@@ -372,6 +437,8 @@ namespace ATT_Wrapper
             // 3. Применяем этот хак к обоим TabControl
             tabControlOutput.MouseDown += removeFocus;
             tabControlActions.MouseDown += removeFocus;
+
+            dgvResults.MouseDown += removeFocus;
 
             }
 

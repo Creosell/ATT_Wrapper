@@ -77,6 +77,7 @@
             this.btnUpdate.NoAccentTextColor = System.Drawing.Color.Empty;
             this.btnUpdate.Size = new System.Drawing.Size(77, 36);
             this.btnUpdate.TabIndex = 4;
+            this.btnUpdate.TabStop = false;
             this.btnUpdate.Text = "Update";
             this.btnUpdate.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.btnUpdate.UseAccentColor = false;
@@ -97,6 +98,7 @@
             this.btnCommon.NoAccentTextColor = System.Drawing.Color.Empty;
             this.btnCommon.Size = new System.Drawing.Size(88, 36);
             this.btnCommon.TabIndex = 5;
+            this.btnCommon.TabStop = false;
             this.btnCommon.Text = "Common";
             this.btnCommon.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.btnCommon.UseAccentColor = false;
@@ -117,6 +119,7 @@
             this.btnSpecial.NoAccentTextColor = System.Drawing.Color.Empty;
             this.btnSpecial.Size = new System.Drawing.Size(80, 36);
             this.btnSpecial.TabIndex = 6;
+            this.btnSpecial.TabStop = false;
             this.btnSpecial.Text = "Special";
             this.btnSpecial.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.btnSpecial.UseAccentColor = false;
@@ -191,7 +194,7 @@
             this.tabExpert.Location = new System.Drawing.Point(4, 37);
             this.tabExpert.Name = "tabExpert";
             this.tabExpert.Padding = new System.Windows.Forms.Padding(3);
-            this.tabExpert.Size = new System.Drawing.Size(880, 755);
+            this.tabExpert.Size = new System.Drawing.Size(607, 522);
             this.tabExpert.TabIndex = 1;
             this.tabExpert.Text = "Expert";
             this.tabExpert.UseVisualStyleBackColor = true;
@@ -204,7 +207,7 @@
             this.rtbLog.Location = new System.Drawing.Point(3, 3);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(874, 749);
+            this.rtbLog.Size = new System.Drawing.Size(601, 516);
             this.rtbLog.TabIndex = 0;
             this.rtbLog.TabStop = false;
             this.rtbLog.Text = "";
@@ -264,6 +267,7 @@
             this.btnAging.NoAccentTextColor = System.Drawing.Color.Empty;
             this.btnAging.Size = new System.Drawing.Size(66, 36);
             this.btnAging.TabIndex = 11;
+            this.btnAging.TabStop = false;
             this.btnAging.Text = "Aging";
             this.btnAging.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.btnAging.UseAccentColor = false;
@@ -284,6 +288,7 @@
             this.mockReport.NoAccentTextColor = System.Drawing.Color.Empty;
             this.mockReport.Size = new System.Drawing.Size(122, 36);
             this.mockReport.TabIndex = 16;
+            this.mockReport.TabStop = false;
             this.mockReport.Text = "Mock report";
             this.mockReport.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.mockReport.UseAccentColor = false;
@@ -305,6 +310,7 @@
             this.taskKillBtnMain.NoAccentTextColor = System.Drawing.Color.Empty;
             this.taskKillBtnMain.Size = new System.Drawing.Size(122, 36);
             this.taskKillBtnMain.TabIndex = 13;
+            this.taskKillBtnMain.TabStop = false;
             this.taskKillBtnMain.Text = "Kill task";
             this.taskKillBtnMain.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.taskKillBtnMain.UseAccentColor = false;
@@ -317,7 +323,7 @@
             this.extraButtonsTab.Location = new System.Drawing.Point(4, 34);
             this.extraButtonsTab.Name = "extraButtonsTab";
             this.extraButtonsTab.Padding = new System.Windows.Forms.Padding(3);
-            this.extraButtonsTab.Size = new System.Drawing.Size(284, 758);
+            this.extraButtonsTab.Size = new System.Drawing.Size(192, 525);
             this.extraButtonsTab.TabIndex = 1;
             this.extraButtonsTab.Text = "Extra";
             this.extraButtonsTab.UseVisualStyleBackColor = true;
@@ -331,7 +337,7 @@
             this.extraButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.extraButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.extraButtonsLayoutPanel.Name = "extraButtonsLayoutPanel";
-            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(278, 752);
+            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(186, 519);
             this.extraButtonsLayoutPanel.TabIndex = 0;
             this.extraButtonsLayoutPanel.WrapContents = false;
             // 
@@ -404,6 +410,7 @@
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "ATT Runner";
+            this.Load += new System.EventHandler(this.JatlasTestRunnerForm_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).EndInit();
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
