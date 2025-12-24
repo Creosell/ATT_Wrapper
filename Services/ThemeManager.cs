@@ -119,8 +119,10 @@ namespace ATT_Wrapper.Services
             }
 
         /// <summary>
-        /// Registers a FlowLayoutPanel for fluid button resizing.
-        /// Ensures buttons expand to fill width but avoids scrollbars.
+        /// Настраивает панель:
+        /// 1. Ширина кнопок подгоняется под ширину панели (минус скролл).
+        /// 2. Высота кнопок АВТОМАТИЧЕСКИ увеличивается, если текст не влезает.
+        /// 3. Текст выравнивается по левому краю для удобства чтения.
         /// </summary>
         private static void SetupFluidFlowPanel(FlowLayoutPanel panel)
             {
@@ -128,41 +130,82 @@ namespace ATT_Wrapper.Services
 
             try
                 {
-                panel.AutoScroll = false;
-                panel.HorizontalScroll.Visible = false;
-                panel.WrapContents = false;
+                // Базовые настройки панели
                 panel.FlowDirection = FlowDirection.TopDown;
+                panel.WrapContents = false;
+                panel.AutoScroll = true;
+                panel.HorizontalScroll.Visible = false;
+                panel.HorizontalScroll.Maximum = 0;
 
-                // 1. Define logic in a local function to call it manually + on event
                 void ResizeLogic()
                     {
                     panel.SuspendLayout();
-                    // Width calculation: Client - Padding - small margin for safety
-                    int targetWidth = panel.ClientSize.Width - ( panel.Padding.Horizontal + 6 );
+
+                    // 1. Вычисляем доступную ширину
+                    int availableWidth = panel.ClientSize.Width;
+                    int panelPadding = panel.Padding.Horizontal;
+
+                    // Минимальная высота кнопки (для коротких названий)
+                    int minHeight = 50; // Чуть увеличим базу, чтобы текст дышал
 
                     foreach (Control c in panel.Controls)
                         {
+                        if (!c.Visible) continue;
+
                         if (c is Button btn)
                             {
-                            // FIX: AutoSizeMode.None doesn't exist. AutoSize = false is enough.
                             btn.AutoSize = false;
-                            btn.MinimumSize = new Size(100, 40);
 
+                            // --- ШАГ 1: ВЫРАВНИВАНИЕ ---
+                            // Для списков левое выравнивание - это стандарт.
+                            // К сожалению, MaterialButton иногда игнорирует это, 
+                            // но для обычных кнопок это критично.
+                            btn.TextAlign = ContentAlignment.MiddleLeft;
+
+                            // --- ШАГ 2: РАСЧЕТ ШИРИНЫ ---
+                            // Отнимаем отступы (Margin) самой кнопки
+                            int targetWidth = availableWidth - panelPadding - btn.Margin.Horizontal - SystemInformation.VerticalScrollBarWidth;
+
+                            // Страховка
+                            if (targetWidth < 50) targetWidth = 50;
                             if (btn.Width != targetWidth) btn.Width = targetWidth;
+
+                            // --- ШАГ 3: РАСЧЕТ ВЫСОТЫ (УМНЫЙ) ---
+                            // Спрашиваем у графического движка: "Сколько места займет этот текст при такой ширине?"
+                            // TextFormatFlags.WordBreak разрешает перенос слов.
+                            Size textSize = TextRenderer.MeasureText(
+                                btn.Text,
+                                btn.Font,
+                                new Size(targetWidth - 20, 0), // -20 это внутренний Padding кнопки (слева/справа)
+                                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl
+                            );
+
+                            // Если текста мало -> берем minHeight (50px).
+                            // Если текста много -> берем высоту текста + отступы сверху/снизу (например +20px).
+                            int requiredHeight = Math.Max(minHeight, textSize.Height + 20);
+
+                            if (btn.Height != requiredHeight)
+                                {
+                                btn.Height = requiredHeight;
+                                }
                             }
                         }
+
                     panel.ResumeLayout(true);
                     }
 
-                // 2. Bind event
+                // Подписки
+                panel.Layout += (s, e) => ResizeLogic();
                 panel.SizeChanged += (s, e) => ResizeLogic();
+                panel.ControlAdded += (s, e) => ResizeLogic();
+                panel.ControlRemoved += (s, e) => ResizeLogic();
 
-                // 3. Trigger immediately (Fixes 'OnSizeChanged is inaccessible' error)
+                // Запуск
                 ResizeLogic();
                 }
             catch (Exception ex)
                 {
-                Log.Error(ex, $"[ThemeManager] Failed to setup fluid layout for {panel.Name}");
+                Console.WriteLine($"[ThemeManager] Error setup fluid panel: {ex.Message}");
                 }
             }
 

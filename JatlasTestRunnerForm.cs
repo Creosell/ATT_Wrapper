@@ -26,6 +26,7 @@ namespace ATT_Wrapper
         private ConsoleOutputHandler _outputHandler;
         private ToolStripLoadingSpinner _loadingSpinner;
         private Action _onTaskFinished;
+        private ReportStatusManager _reportStatusManager;
 
         public JatlasTestRunnerForm()
             {
@@ -121,8 +122,33 @@ namespace ATT_Wrapper
                 TextShade.WHITE
             );
 
+            _reportStatusManager = new ReportStatusManager();
+
+            // Инициализация менеджера
+            _reportStatusManager = new ReportStatusManager();
+
+            // === РЕГИСТРАЦИЯ ЗАГРУЗЧИКОВ ===
+
+            // 1. Nextcloud
+            if (NextсloudStatusIcon != null && NextсloudStatusLabel != null)
+                {
+                _reportStatusManager.Register("nextcloud", NextсloudStatusIcon, NextсloudStatusLabel);
+                }
+
+            // 2. Calydon
+            if (CalydonStatusIcon != null && CalydonStatusLabel != null)
+                {
+                _reportStatusManager.Register("calydon", CalydonStatusIcon, CalydonStatusLabel);
+                }
+
+            // 3. FeishuBot
+            if (FeishuStatusIcon != null && FeishuStatusLabel != null)
+                {
+                _reportStatusManager.Register("feishubot", FeishuStatusIcon, FeishuStatusLabel);
+                }
+
             // Custom theme manager
-            ThemeManager.Apply(this, dgvResults, rtbLog, mainButtonsLayoutPanel, extraButtonsLayoutPanel);
+            ThemeManager.Apply(this, dgvResults, rtbLog, mainButtonsLayoutPanel, extraButtonsLayoutPanel, ReportStatusLayoutPanel);
             }
 
         private void SetupDataGridView()
@@ -207,6 +233,7 @@ namespace ATT_Wrapper
             ToggleButtons(false);
             _gridController.Clear();
             rtbLog.Clear();
+            _reportStatusManager?.ResetAll();
 
             if (statusLabel != null) statusLabel.Text = "Initializing...";
 
@@ -219,6 +246,7 @@ namespace ATT_Wrapper
             _outputHandler = new ConsoleOutputHandler(
                 parser,
                 _gridController,
+                _reportStatusManager,
                 (status) => this.BeginInvoke((Action)( () =>
                 {
                     if (statusLabel != null)
@@ -367,7 +395,8 @@ namespace ATT_Wrapper
         private void KillTask(object sender, EventArgs e)
             {
             Log.Information("Kill button clicked");
-            _executor.Kill();
+
+            _executor?.Kill();
 
             this.BeginInvoke((Action)( () =>
             {
@@ -428,17 +457,17 @@ namespace ATT_Wrapper
 
         private void SetupFocus()
             {
-            MouseEventHandler removeFocus = (s, e) =>
-            {
+            void removeFocus(object s, MouseEventArgs e)
+                {
                 // ActiveControl = null убирает фокус с текущего элемента формы
                 this.ActiveControl = null;
-            };
+                }
 
             // 3. Применяем этот хак к обоим TabControl
-            tabControlOutput.MouseDown += removeFocus;
-            tabControlActions.MouseDown += removeFocus;
+            tabControlOutput.MouseDown +=  removeFocus ;
+            tabControlActions.MouseDown +=  removeFocus ;
 
-            dgvResults.MouseDown += removeFocus;
+            dgvResults.MouseDown +=  removeFocus ;
 
             }
 

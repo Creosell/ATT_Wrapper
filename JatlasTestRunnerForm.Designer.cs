@@ -50,6 +50,24 @@
             this.btnCommonOffline = new MaterialSkin.Controls.MaterialButton();
             this.taskKillBtnExtra = new MaterialSkin.Controls.MaterialButton();
             this.formTableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.ButtonsAndStatusesPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.ReportStatusLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
+            this.NextcloudStatusTable = new System.Windows.Forms.TableLayoutPanel();
+            this.CalydonStatusTable = new System.Windows.Forms.TableLayoutPanel();
+            this.FeishuStatusTable = new System.Windows.Forms.TableLayoutPanel();
+            this.NextсloudStatusLabel = new System.Windows.Forms.Label();
+            this.NextсloudStatusIcon = new System.Windows.Forms.PictureBox();
+            this.CalydonStatusIcon = new System.Windows.Forms.PictureBox();
+            this.FeishuStatusIcon = new System.Windows.Forms.PictureBox();
+            this.CalydonStatusLabel = new System.Windows.Forms.Label();
+            this.FeishuStatusLabel = new System.Windows.Forms.Label();
+            this.ReportStatusLabel = new System.Windows.Forms.Label();
+            this.materialButton1 = new MaterialSkin.Controls.MaterialButton();
+            this.materialButton2 = new MaterialSkin.Controls.MaterialButton();
+            this.materialButton3 = new MaterialSkin.Controls.MaterialButton();
+            this.materialButton4 = new MaterialSkin.Controls.MaterialButton();
+            this.materialButton5 = new MaterialSkin.Controls.MaterialButton();
+            this.materialButton6 = new MaterialSkin.Controls.MaterialButton();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).BeginInit();
             this.statusStrip.SuspendLayout();
             this.tabControlOutput.SuspendLayout();
@@ -61,6 +79,14 @@
             this.extraButtonsTab.SuspendLayout();
             this.extraButtonsLayoutPanel.SuspendLayout();
             this.formTableLayoutPanel.SuspendLayout();
+            this.ButtonsAndStatusesPanel.SuspendLayout();
+            this.ReportStatusLayoutPanel.SuspendLayout();
+            this.NextcloudStatusTable.SuspendLayout();
+            this.CalydonStatusTable.SuspendLayout();
+            this.FeishuStatusTable.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.NextсloudStatusIcon)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.CalydonStatusIcon)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.FeishuStatusIcon)).BeginInit();
             this.SuspendLayout();
             // 
             // btnUpdate
@@ -221,7 +247,7 @@
             this.tabControlActions.Location = new System.Drawing.Point(3, 3);
             this.tabControlActions.Name = "tabControlActions";
             this.tabControlActions.SelectedIndex = 0;
-            this.tabControlActions.Size = new System.Drawing.Size(200, 563);
+            this.tabControlActions.Size = new System.Drawing.Size(194, 416);
             this.tabControlActions.TabIndex = 4;
             this.tabControlActions.TabStop = false;
             // 
@@ -231,7 +257,7 @@
             this.mainButtonsTab.Location = new System.Drawing.Point(4, 34);
             this.mainButtonsTab.Name = "mainButtonsTab";
             this.mainButtonsTab.Padding = new System.Windows.Forms.Padding(3);
-            this.mainButtonsTab.Size = new System.Drawing.Size(192, 525);
+            this.mainButtonsTab.Size = new System.Drawing.Size(186, 378);
             this.mainButtonsTab.TabIndex = 0;
             this.mainButtonsTab.Text = "Main";
             this.mainButtonsTab.UseVisualStyleBackColor = true;
@@ -249,7 +275,7 @@
             this.mainButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.mainButtonsLayoutPanel.Name = "mainButtonsLayoutPanel";
-            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(186, 519);
+            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(180, 372);
             this.mainButtonsLayoutPanel.TabIndex = 9;
             this.mainButtonsLayoutPanel.WrapContents = false;
             // 
@@ -300,7 +326,6 @@
             this.taskKillBtnMain.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.taskKillBtnMain.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
             this.taskKillBtnMain.Depth = 0;
-            this.taskKillBtnMain.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.taskKillBtnMain.HighEmphasis = true;
             this.taskKillBtnMain.Icon = null;
             this.taskKillBtnMain.Location = new System.Drawing.Point(4, 246);
@@ -308,7 +333,7 @@
             this.taskKillBtnMain.MouseState = MaterialSkin.MouseState.HOVER;
             this.taskKillBtnMain.Name = "taskKillBtnMain";
             this.taskKillBtnMain.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.taskKillBtnMain.Size = new System.Drawing.Size(122, 36);
+            this.taskKillBtnMain.Size = new System.Drawing.Size(91, 36);
             this.taskKillBtnMain.TabIndex = 13;
             this.taskKillBtnMain.TabStop = false;
             this.taskKillBtnMain.Text = "Kill task";
@@ -323,7 +348,7 @@
             this.extraButtonsTab.Location = new System.Drawing.Point(4, 34);
             this.extraButtonsTab.Name = "extraButtonsTab";
             this.extraButtonsTab.Padding = new System.Windows.Forms.Padding(3);
-            this.extraButtonsTab.Size = new System.Drawing.Size(192, 525);
+            this.extraButtonsTab.Size = new System.Drawing.Size(186, 378);
             this.extraButtonsTab.TabIndex = 1;
             this.extraButtonsTab.Text = "Extra";
             this.extraButtonsTab.UseVisualStyleBackColor = true;
@@ -333,11 +358,17 @@
             this.extraButtonsLayoutPanel.AutoScroll = true;
             this.extraButtonsLayoutPanel.Controls.Add(this.btnCommonOffline);
             this.extraButtonsLayoutPanel.Controls.Add(this.taskKillBtnExtra);
+            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton1);
+            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton2);
+            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton3);
+            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton4);
+            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton5);
+            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton6);
             this.extraButtonsLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.extraButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.extraButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.extraButtonsLayoutPanel.Name = "extraButtonsLayoutPanel";
-            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(186, 519);
+            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(180, 372);
             this.extraButtonsLayoutPanel.TabIndex = 0;
             this.extraButtonsLayoutPanel.WrapContents = false;
             // 
@@ -375,7 +406,7 @@
             this.taskKillBtnExtra.MouseState = MaterialSkin.MouseState.HOVER;
             this.taskKillBtnExtra.Name = "taskKillBtnExtra";
             this.taskKillBtnExtra.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.taskKillBtnExtra.Size = new System.Drawing.Size(160, 36);
+            this.taskKillBtnExtra.Size = new System.Drawing.Size(314, 36);
             this.taskKillBtnExtra.TabIndex = 14;
             this.taskKillBtnExtra.Text = "Kill task";
             this.taskKillBtnExtra.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
@@ -388,8 +419,8 @@
             this.formTableLayoutPanel.ColumnCount = 2;
             this.formTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
             this.formTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 75F));
-            this.formTableLayoutPanel.Controls.Add(this.tabControlActions, 0, 0);
             this.formTableLayoutPanel.Controls.Add(this.tabControlOutput, 1, 0);
+            this.formTableLayoutPanel.Controls.Add(this.ButtonsAndStatusesPanel, 0, 0);
             this.formTableLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.formTableLayoutPanel.Location = new System.Drawing.Point(3, 64);
             this.formTableLayoutPanel.Name = "formTableLayoutPanel";
@@ -397,6 +428,270 @@
             this.formTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.formTableLayoutPanel.Size = new System.Drawing.Size(827, 569);
             this.formTableLayoutPanel.TabIndex = 5;
+            // 
+            // ButtonsAndStatusesPanel
+            // 
+            this.ButtonsAndStatusesPanel.ColumnCount = 1;
+            this.ButtonsAndStatusesPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.ButtonsAndStatusesPanel.Controls.Add(this.tabControlActions, 0, 0);
+            this.ButtonsAndStatusesPanel.Controls.Add(this.ReportStatusLayoutPanel, 0, 1);
+            this.ButtonsAndStatusesPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ButtonsAndStatusesPanel.Location = new System.Drawing.Point(3, 3);
+            this.ButtonsAndStatusesPanel.Name = "ButtonsAndStatusesPanel";
+            this.ButtonsAndStatusesPanel.RowCount = 2;
+            this.ButtonsAndStatusesPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 75F));
+            this.ButtonsAndStatusesPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.ButtonsAndStatusesPanel.Size = new System.Drawing.Size(200, 563);
+            this.ButtonsAndStatusesPanel.TabIndex = 4;
+            // 
+            // ReportStatusLayoutPanel
+            // 
+            this.ReportStatusLayoutPanel.Controls.Add(this.ReportStatusLabel);
+            this.ReportStatusLayoutPanel.Controls.Add(this.NextcloudStatusTable);
+            this.ReportStatusLayoutPanel.Controls.Add(this.CalydonStatusTable);
+            this.ReportStatusLayoutPanel.Controls.Add(this.FeishuStatusTable);
+            this.ReportStatusLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ReportStatusLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            this.ReportStatusLayoutPanel.Location = new System.Drawing.Point(3, 425);
+            this.ReportStatusLayoutPanel.Name = "ReportStatusLayoutPanel";
+            this.ReportStatusLayoutPanel.Size = new System.Drawing.Size(194, 135);
+            this.ReportStatusLayoutPanel.TabIndex = 5;
+            // 
+            // NextcloudStatusTable
+            // 
+            this.NextcloudStatusTable.ColumnCount = 2;
+            this.NextcloudStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
+            this.NextcloudStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
+            this.NextcloudStatusTable.Controls.Add(this.NextсloudStatusLabel, 1, 0);
+            this.NextcloudStatusTable.Controls.Add(this.NextсloudStatusIcon, 0, 0);
+            this.NextcloudStatusTable.Location = new System.Drawing.Point(3, 33);
+            this.NextcloudStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
+            this.NextcloudStatusTable.Name = "NextcloudStatusTable";
+            this.NextcloudStatusTable.RowCount = 1;
+            this.NextcloudStatusTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.NextcloudStatusTable.Size = new System.Drawing.Size(151, 27);
+            this.NextcloudStatusTable.TabIndex = 0;
+            // 
+            // CalydonStatusTable
+            // 
+            this.CalydonStatusTable.ColumnCount = 2;
+            this.CalydonStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
+            this.CalydonStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
+            this.CalydonStatusTable.Controls.Add(this.CalydonStatusIcon, 0, 0);
+            this.CalydonStatusTable.Controls.Add(this.CalydonStatusLabel, 1, 0);
+            this.CalydonStatusTable.Location = new System.Drawing.Point(3, 60);
+            this.CalydonStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
+            this.CalydonStatusTable.Name = "CalydonStatusTable";
+            this.CalydonStatusTable.RowCount = 1;
+            this.CalydonStatusTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.CalydonStatusTable.Size = new System.Drawing.Size(151, 27);
+            this.CalydonStatusTable.TabIndex = 1;
+            // 
+            // FeishuStatusTable
+            // 
+            this.FeishuStatusTable.ColumnCount = 2;
+            this.FeishuStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
+            this.FeishuStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
+            this.FeishuStatusTable.Controls.Add(this.FeishuStatusIcon, 0, 0);
+            this.FeishuStatusTable.Controls.Add(this.FeishuStatusLabel, 1, 0);
+            this.FeishuStatusTable.Location = new System.Drawing.Point(3, 87);
+            this.FeishuStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
+            this.FeishuStatusTable.Name = "FeishuStatusTable";
+            this.FeishuStatusTable.RowCount = 1;
+            this.FeishuStatusTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.FeishuStatusTable.Size = new System.Drawing.Size(151, 27);
+            this.FeishuStatusTable.TabIndex = 1;
+            // 
+            // NextсloudStatusLabel
+            // 
+            this.NextсloudStatusLabel.AutoSize = true;
+            this.NextсloudStatusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.NextсloudStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.NextсloudStatusLabel.Location = new System.Drawing.Point(30, 1);
+            this.NextсloudStatusLabel.Margin = new System.Windows.Forms.Padding(0, 1, 3, 0);
+            this.NextсloudStatusLabel.Name = "NextсloudStatusLabel";
+            this.NextсloudStatusLabel.Size = new System.Drawing.Size(118, 26);
+            this.NextсloudStatusLabel.TabIndex = 0;
+            this.NextсloudStatusLabel.Text = "Nextcloud";
+            this.NextсloudStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // NextсloudStatusIcon
+            // 
+            this.NextсloudStatusIcon.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.NextсloudStatusIcon.Location = new System.Drawing.Point(3, 3);
+            this.NextсloudStatusIcon.Name = "NextсloudStatusIcon";
+            this.NextсloudStatusIcon.Size = new System.Drawing.Size(24, 21);
+            this.NextсloudStatusIcon.TabIndex = 1;
+            this.NextсloudStatusIcon.TabStop = false;
+            // 
+            // CalydonStatusIcon
+            // 
+            this.CalydonStatusIcon.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.CalydonStatusIcon.Location = new System.Drawing.Point(3, 3);
+            this.CalydonStatusIcon.Name = "CalydonStatusIcon";
+            this.CalydonStatusIcon.Size = new System.Drawing.Size(24, 21);
+            this.CalydonStatusIcon.TabIndex = 0;
+            this.CalydonStatusIcon.TabStop = false;
+            // 
+            // FeishuStatusIcon
+            // 
+            this.FeishuStatusIcon.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.FeishuStatusIcon.Location = new System.Drawing.Point(3, 3);
+            this.FeishuStatusIcon.Name = "FeishuStatusIcon";
+            this.FeishuStatusIcon.Size = new System.Drawing.Size(24, 21);
+            this.FeishuStatusIcon.TabIndex = 0;
+            this.FeishuStatusIcon.TabStop = false;
+            // 
+            // CalydonStatusLabel
+            // 
+            this.CalydonStatusLabel.AutoSize = true;
+            this.CalydonStatusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.CalydonStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.CalydonStatusLabel.Location = new System.Drawing.Point(30, 1);
+            this.CalydonStatusLabel.Margin = new System.Windows.Forms.Padding(0, 1, 3, 0);
+            this.CalydonStatusLabel.Name = "CalydonStatusLabel";
+            this.CalydonStatusLabel.Size = new System.Drawing.Size(118, 26);
+            this.CalydonStatusLabel.TabIndex = 1;
+            this.CalydonStatusLabel.Text = "Calydon";
+            this.CalydonStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // FeishuStatusLabel
+            // 
+            this.FeishuStatusLabel.AutoSize = true;
+            this.FeishuStatusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.FeishuStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.FeishuStatusLabel.Location = new System.Drawing.Point(30, 1);
+            this.FeishuStatusLabel.Margin = new System.Windows.Forms.Padding(0, 1, 3, 0);
+            this.FeishuStatusLabel.Name = "FeishuStatusLabel";
+            this.FeishuStatusLabel.Size = new System.Drawing.Size(118, 26);
+            this.FeishuStatusLabel.TabIndex = 1;
+            this.FeishuStatusLabel.Text = "Feishu";
+            this.FeishuStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // ReportStatusLabel
+            // 
+            this.ReportStatusLabel.AutoSize = true;
+            this.ReportStatusLabel.Font = new System.Drawing.Font("Segoe UI", 10.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ReportStatusLabel.Location = new System.Drawing.Point(3, 5);
+            this.ReportStatusLabel.Margin = new System.Windows.Forms.Padding(3, 5, 3, 5);
+            this.ReportStatusLabel.Name = "ReportStatusLabel";
+            this.ReportStatusLabel.Size = new System.Drawing.Size(169, 23);
+            this.ReportStatusLabel.TabIndex = 2;
+            this.ReportStatusLabel.Text = "Report upload status";
+            // 
+            // materialButton1
+            // 
+            this.materialButton1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.materialButton1.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.materialButton1.Depth = 0;
+            this.materialButton1.HighEmphasis = true;
+            this.materialButton1.Icon = null;
+            this.materialButton1.Location = new System.Drawing.Point(4, 102);
+            this.materialButton1.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.materialButton1.MouseState = MaterialSkin.MouseState.HOVER;
+            this.materialButton1.Name = "materialButton1";
+            this.materialButton1.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.materialButton1.Size = new System.Drawing.Size(314, 36);
+            this.materialButton1.TabIndex = 15;
+            this.materialButton1.Text = "SDMN-M27-MotherBoardWithWiFiCard";
+            this.materialButton1.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.materialButton1.UseAccentColor = false;
+            this.materialButton1.UseVisualStyleBackColor = true;
+            // 
+            // materialButton2
+            // 
+            this.materialButton2.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.materialButton2.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.materialButton2.Depth = 0;
+            this.materialButton2.HighEmphasis = true;
+            this.materialButton2.Icon = null;
+            this.materialButton2.Location = new System.Drawing.Point(4, 150);
+            this.materialButton2.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.materialButton2.MouseState = MaterialSkin.MouseState.HOVER;
+            this.materialButton2.Name = "materialButton2";
+            this.materialButton2.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.materialButton2.Size = new System.Drawing.Size(314, 36);
+            this.materialButton2.TabIndex = 16;
+            this.materialButton2.Text = "SDMN-M27-MotherBoardWithWiFiCard";
+            this.materialButton2.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.materialButton2.UseAccentColor = false;
+            this.materialButton2.UseVisualStyleBackColor = true;
+            // 
+            // materialButton3
+            // 
+            this.materialButton3.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.materialButton3.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.materialButton3.Depth = 0;
+            this.materialButton3.HighEmphasis = true;
+            this.materialButton3.Icon = null;
+            this.materialButton3.Location = new System.Drawing.Point(4, 198);
+            this.materialButton3.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.materialButton3.MouseState = MaterialSkin.MouseState.HOVER;
+            this.materialButton3.Name = "materialButton3";
+            this.materialButton3.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.materialButton3.Size = new System.Drawing.Size(314, 36);
+            this.materialButton3.TabIndex = 17;
+            this.materialButton3.Text = "SDMN-M27-MotherBoardWithWiFiCard";
+            this.materialButton3.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.materialButton3.UseAccentColor = false;
+            this.materialButton3.UseVisualStyleBackColor = true;
+            // 
+            // materialButton4
+            // 
+            this.materialButton4.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.materialButton4.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.materialButton4.Depth = 0;
+            this.materialButton4.HighEmphasis = true;
+            this.materialButton4.Icon = null;
+            this.materialButton4.Location = new System.Drawing.Point(4, 246);
+            this.materialButton4.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.materialButton4.MouseState = MaterialSkin.MouseState.HOVER;
+            this.materialButton4.Name = "materialButton4";
+            this.materialButton4.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.materialButton4.Size = new System.Drawing.Size(314, 36);
+            this.materialButton4.TabIndex = 18;
+            this.materialButton4.Text = "SDMN-M27-MotherBoardWithWiFiCard";
+            this.materialButton4.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.materialButton4.UseAccentColor = false;
+            this.materialButton4.UseVisualStyleBackColor = true;
+            // 
+            // materialButton5
+            // 
+            this.materialButton5.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.materialButton5.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.materialButton5.Depth = 0;
+            this.materialButton5.HighEmphasis = true;
+            this.materialButton5.Icon = null;
+            this.materialButton5.Location = new System.Drawing.Point(4, 294);
+            this.materialButton5.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.materialButton5.MouseState = MaterialSkin.MouseState.HOVER;
+            this.materialButton5.Name = "materialButton5";
+            this.materialButton5.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.materialButton5.Size = new System.Drawing.Size(314, 36);
+            this.materialButton5.TabIndex = 19;
+            this.materialButton5.Text = "SDMN-M27-MotherBoardWithWiFiCard";
+            this.materialButton5.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.materialButton5.UseAccentColor = false;
+            this.materialButton5.UseVisualStyleBackColor = true;
+            // 
+            // materialButton6
+            // 
+            this.materialButton6.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.materialButton6.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.materialButton6.Depth = 0;
+            this.materialButton6.HighEmphasis = true;
+            this.materialButton6.Icon = null;
+            this.materialButton6.Location = new System.Drawing.Point(4, 342);
+            this.materialButton6.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.materialButton6.MouseState = MaterialSkin.MouseState.HOVER;
+            this.materialButton6.Name = "materialButton6";
+            this.materialButton6.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.materialButton6.Size = new System.Drawing.Size(314, 36);
+            this.materialButton6.TabIndex = 20;
+            this.materialButton6.Text = "SDMN-M27-MotherBoardWithWiFiCard";
+            this.materialButton6.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.materialButton6.UseAccentColor = false;
+            this.materialButton6.UseVisualStyleBackColor = true;
             // 
             // JatlasTestRunnerForm
             // 
@@ -425,6 +720,18 @@
             this.extraButtonsLayoutPanel.ResumeLayout(false);
             this.extraButtonsLayoutPanel.PerformLayout();
             this.formTableLayoutPanel.ResumeLayout(false);
+            this.ButtonsAndStatusesPanel.ResumeLayout(false);
+            this.ReportStatusLayoutPanel.ResumeLayout(false);
+            this.ReportStatusLayoutPanel.PerformLayout();
+            this.NextcloudStatusTable.ResumeLayout(false);
+            this.NextcloudStatusTable.PerformLayout();
+            this.CalydonStatusTable.ResumeLayout(false);
+            this.CalydonStatusTable.PerformLayout();
+            this.FeishuStatusTable.ResumeLayout(false);
+            this.FeishuStatusTable.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.NextсloudStatusIcon)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.CalydonStatusIcon)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.FeishuStatusIcon)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -452,5 +759,23 @@
         private MaterialSkin.Controls.MaterialButton btnCommonOffline;
         private MaterialSkin.Controls.MaterialButton taskKillBtnExtra;
         private MaterialSkin.Controls.MaterialButton mockReport;
+        private System.Windows.Forms.TableLayoutPanel ButtonsAndStatusesPanel;
+        private System.Windows.Forms.FlowLayoutPanel ReportStatusLayoutPanel;
+        private System.Windows.Forms.TableLayoutPanel NextcloudStatusTable;
+        private System.Windows.Forms.TableLayoutPanel CalydonStatusTable;
+        private System.Windows.Forms.TableLayoutPanel FeishuStatusTable;
+        private System.Windows.Forms.Label NextсloudStatusLabel;
+        private System.Windows.Forms.PictureBox NextсloudStatusIcon;
+        private System.Windows.Forms.PictureBox CalydonStatusIcon;
+        private System.Windows.Forms.Label CalydonStatusLabel;
+        private System.Windows.Forms.PictureBox FeishuStatusIcon;
+        private System.Windows.Forms.Label FeishuStatusLabel;
+        private System.Windows.Forms.Label ReportStatusLabel;
+        private MaterialSkin.Controls.MaterialButton materialButton1;
+        private MaterialSkin.Controls.MaterialButton materialButton2;
+        private MaterialSkin.Controls.MaterialButton materialButton3;
+        private MaterialSkin.Controls.MaterialButton materialButton4;
+        private MaterialSkin.Controls.MaterialButton materialButton5;
+        private MaterialSkin.Controls.MaterialButton materialButton6;
         }
     }

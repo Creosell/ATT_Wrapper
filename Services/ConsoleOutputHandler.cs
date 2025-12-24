@@ -14,6 +14,7 @@ namespace ATT_Wrapper.Services
         private readonly ResultsGridController _gridController;
         private readonly Action<string> _statusCallback;
         private readonly Action _enterCallback;
+        private readonly ReportStatusManager _statusManager;
 
         private readonly StringBuilder _lineBuffer = new StringBuilder();
         private readonly object _bufferLock = new object();
@@ -49,11 +50,13 @@ namespace ATT_Wrapper.Services
         public ConsoleOutputHandler(
             ILogParser parser,
             ResultsGridController gridController,
+            ReportStatusManager statusManager,
             Action<string> statusCallback,
             Action enterCallback)
             {
             _parser = parser;
             _gridController = gridController;
+            _statusManager = statusManager;
             _statusCallback = statusCallback;
             _enterCallback = enterCallback;
 
@@ -247,9 +250,24 @@ namespace ATT_Wrapper.Services
                 try
                     {
                     _parser.ParseLine(cleanLine,
-                        (status, msg, group) => _gridController.HandleLogMessage(status, msg),
-                        (progMsg) => _statusCallback?.Invoke(progMsg)
-                    );
+                                            (status, msg, group) =>
+                                            {
+                                                // --- ЛОГИКА МАРШРУТИЗАЦИИ ---
+
+                                                // 1. Проверяем, является ли это сообщением от загрузчика (Uploader)
+                                                if (!string.IsNullOrEmpty(group) && (group.StartsWith("uploader:") || group.StartsWith("base report")))
+                                                    {
+                                                    // Если да -> Обновляем ТОЛЬКО иконки статуса. В Grid НЕ пишем.
+                                                    _statusManager?.UpdateStatus(group, status);
+                                                    }
+                                                else
+                                                    {
+                                                    // 2. Все остальные сообщения (тесты, ошибки рендера) -> в Grid
+                                                    _gridController.HandleLogMessage(status, msg);
+                                                    }
+                                            },
+                                            (progMsg) => _statusCallback?.Invoke(progMsg)
+                                        );
                     }
                 catch { /* Ignore parsing errors */ }
                 }

@@ -37,7 +37,7 @@ namespace ATT_Wrapper
             if (TryHandleTaskProgress(line, onProgress)) return false;
             if (TryHandleReport(line, onResult, onProgress)) return true;
             if (TryHandleUploaders(line, onResult)) return true;
-            if (TryHandleNextCloudMultiline(line)) return true;
+            //if (TryHandleNextCloudMultiline(line)) return true;
             if (TryHandleStandardResult(line, onResult)) return true;
 
             return false;
@@ -119,8 +119,7 @@ namespace ATT_Wrapper
             string rawMsg = match.Groups[2].Value;
 
             string status = rawMsg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) >= 0 ? "FAIL" : "PASS";
-            string displayMessage = rawMsg;
-
+            string displayMessage;
             if (name.Equals("NextCloud", StringComparison.OrdinalIgnoreCase))
                 {
                 if (status == "FAIL")
@@ -149,7 +148,7 @@ namespace ATT_Wrapper
 
             // Ключ "uploader:..." для маппинга
             string mappingKey = $"uploader:{name.ToLower()}";
-            onResult?.Invoke(status, displayMessage, mappingKey);
+            onResult?.Invoke(status,   rawMsg  , mappingKey);
 
             return true;
             }

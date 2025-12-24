@@ -130,6 +130,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Components\CustomMaterialButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Components\ReportStatusManager.cs" />
     <Compile Include="Components\ResultsGridController.cs" />
     <Compile Include="Components\ToolStripLoadingSpinner.cs">
       <SubType>Component</SubType>
