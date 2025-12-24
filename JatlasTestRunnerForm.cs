@@ -138,7 +138,7 @@ namespace ATT_Wrapper
             // 2. Calydon
             if (CalydonStatusIcon != null && CalydonStatusLabel != null)
                 {
-                _reportStatusManager.Register("calydon", CalydonStatusIcon, CalydonStatusLabel);
+                _reportStatusManager.Register("webhook", CalydonStatusIcon, CalydonStatusLabel);
                 }
 
             // 3. FeishuBot

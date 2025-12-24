@@ -1,22 +1,34 @@
-﻿using MaterialSkin.Controls;
+﻿using ATT_Wrapper.Components;
+using MaterialSkin.Controls;
 using Serilog;
 using System;
 using System.Drawing;
-using System.Text;
 using System.Windows.Forms;
 
 namespace ATT_Wrapper.Services
     {
     public static class ThemeManager
         {
+        // ==========================================
+        //         КОНФИГУРАЦИЯ ШРИФТОВ
+        // ==========================================
+        private const string FORM_FONT_FAMILY = "Segoe UI";
+        private const float FORM_FONT_SIZE = 10F;
+
+        private const string BUTTON_FONT_FAMILY = "Segoe UI";
+        private const float BUTTON_FONT_SIZE = 11F;
+
+        private const string LOG_FONT_FAMILY = "Cascadia Code";
+        private const float LOG_FONT_SIZE = 10.5F;
+        // ==========================================
+
         public static void Apply(Form form, DataGridView grid, RichTextBox rtb, params FlowLayoutPanel[] layoutPanels)
             {
             Log.Information("Applying MaterialSkin styling to form components");
 
-            form.Font = new Font("Segoe UI", 10F);
+            form.Font = new Font(FORM_FONT_FAMILY, FORM_FONT_SIZE);
             form.BackColor = Color.White;
 
-            // Настройка таблицы результатов
             grid.BackgroundColor = Color.White;
             grid.BorderStyle = BorderStyle.None;
             grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
@@ -25,13 +37,11 @@ namespace ATT_Wrapper.Services
             grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(240, 245, 255);
             grid.DefaultCellStyle.SelectionForeColor = Color.Black;
 
-            // Настройка лога
             rtb.BackColor = Color.Black;
             rtb.ForeColor = Color.White;
-            rtb.Font = new Font("Cascadia Code", 10.5F);
+            rtb.Font = new Font(LOG_FONT_FAMILY, LOG_FONT_SIZE);
             rtb.BorderStyle = BorderStyle.None;
 
-            // Рекурсивная стилизация кнопок
             StyleControls(form);
 
             foreach (var panel in layoutPanels)
@@ -44,163 +54,124 @@ namespace ATT_Wrapper.Services
             {
             foreach (Control c in parent.Controls)
                 {
-                if (c is MaterialButton btn)
+                if (c is CustomMaterialButton btn)
                     {
-                    // 1. Базовые настройки MaterialSkin
+                    btn.Font = new Font(BUTTON_FONT_FAMILY, BUTTON_FONT_SIZE, FontStyle.Regular);
                     btn.Type = MaterialButton.MaterialButtonType.Contained;
                     btn.HighEmphasis = true;
                     btn.Density = MaterialButton.MaterialButtonDensity.Default;
                     btn.Height = 50;
 
-                    // 2. Логика растягивания (Stretching)
-                    // Получаем родителя как FlowLayoutPanel явно, чтобы переменная была доступна
                     FlowLayoutPanel flp = btn.Parent as FlowLayoutPanel;
                     bool shouldStretch = false;
 
-                    if (flp != null)
-                        {
-                        // Проверяем, находится ли панель внутри tabControlActions (на любой глубине)
-                        shouldStretch = IsDescendantOf(flp, "tabControlActions");
-                        }
+                    if (flp != null) shouldStretch = IsDescendantOf(flp, "tabControlActions");
 
                     if (shouldStretch && flp != null)
                         {
                         btn.AutoSize = false;
-                        // Растягиваем на всю ширину родителя за вычетом отступов
                         btn.Width = flp.ClientSize.Width - ( btn.Margin.Left + btn.Margin.Right );
                         }
                     else
                         {
-                        // Стандартное поведение
                         btn.AutoSize = true;
                         }
 
-                    // 3. Цветовая логика (Красный для Kill/Stop)
                     if (btn.Name.Contains("Kill") || btn.Name.Contains("Stop"))
-                        {
                         btn.UseAccentColor = true;
-                        }
                     else
-                        {
                         btn.UseAccentColor = false;
-                        }
                     }
 
-                // Рекурсивный вызов для вложенных контейнеров
                 if (c.HasChildren) StyleControls(c);
                 }
             }
 
-        /// <summary>
-        /// Проверяет, является ли startControl потомком (находится внутри) контрола с именем targetName.
-        /// Поднимается по цепочке Parent -> Parent -> Parent.
-        /// </summary>
         private static bool IsDescendantOf(Control startControl, string targetName)
             {
             Control current = startControl;
-            StringBuilder pathLog = new StringBuilder();
-
             while (current != null)
                 {
-                pathLog.Append($"{current.Name} ({current.GetType().Name}) -> ");
-
-                if (current.Name == targetName)
-                    {
-                    // Цель найдена!
-                    return true;
-                    }
-
+                if (current.Name == targetName) return true;
                 current = current.Parent;
                 }
-
-            pathLog.Append("null");
-
             return false;
             }
 
-        /// <summary>
-        /// Настраивает панель:
-        /// 1. Ширина кнопок подгоняется под ширину панели (минус скролл).
-        /// 2. Высота кнопок АВТОМАТИЧЕСКИ увеличивается, если текст не влезает.
-        /// 3. Текст выравнивается по левому краю для удобства чтения.
-        /// </summary>
         private static void SetupFluidFlowPanel(FlowLayoutPanel panel)
             {
             if (panel == null) return;
 
             try
                 {
-                // Базовые настройки панели
                 panel.FlowDirection = FlowDirection.TopDown;
                 panel.WrapContents = false;
                 panel.AutoScroll = true;
                 panel.HorizontalScroll.Visible = false;
                 panel.HorizontalScroll.Maximum = 0;
 
+                // Локальная функция пересчета (чтобы вызывать её из разных событий)
                 void ResizeLogic()
                     {
                     panel.SuspendLayout();
 
-                    // 1. Вычисляем доступную ширину
                     int availableWidth = panel.ClientSize.Width;
                     int panelPadding = panel.Padding.Horizontal;
-
-                    // Минимальная высота кнопки (для коротких названий)
-                    int minHeight = 50; // Чуть увеличим базу, чтобы текст дышал
 
                     foreach (Control c in panel.Controls)
                         {
                         if (!c.Visible) continue;
 
-                        if (c is Button btn)
+                        if (c is CustomMaterialButton btn)
                             {
                             btn.AutoSize = false;
 
-                            // --- ШАГ 1: ВЫРАВНИВАНИЕ ---
-                            // Для списков левое выравнивание - это стандарт.
-                            // К сожалению, MaterialButton иногда игнорирует это, 
-                            // но для обычных кнопок это критично.
-                            btn.TextAlign = ContentAlignment.MiddleLeft;
-
-                            // --- ШАГ 2: РАСЧЕТ ШИРИНЫ ---
-                            // Отнимаем отступы (Margin) самой кнопки
                             int targetWidth = availableWidth - panelPadding - btn.Margin.Horizontal - SystemInformation.VerticalScrollBarWidth;
-
-                            // Страховка
                             if (targetWidth < 50) targetWidth = 50;
+
                             if (btn.Width != targetWidth) btn.Width = targetWidth;
 
-                            // --- ШАГ 3: РАСЧЕТ ВЫСОТЫ (УМНЫЙ) ---
-                            // Спрашиваем у графического движка: "Сколько места займет этот текст при такой ширине?"
-                            // TextFormatFlags.WordBreak разрешает перенос слов.
-                            Size textSize = TextRenderer.MeasureText(
-                                btn.Text,
-                                btn.Font,
-                                new Size(targetWidth - 20, 0), // -20 это внутренний Padding кнопки (слева/справа)
-                                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl
-                            );
+                            Size preferredSize = btn.GetPreferredSize(new Size(targetWidth, 0));
 
-                            // Если текста мало -> берем minHeight (50px).
-                            // Если текста много -> берем высоту текста + отступы сверху/снизу (например +20px).
-                            int requiredHeight = Math.Max(minHeight, textSize.Height + 20);
-
-                            if (btn.Height != requiredHeight)
+                            if (btn.Height != preferredSize.Height)
                                 {
-                                btn.Height = requiredHeight;
+                                btn.Height = preferredSize.Height;
                                 }
                             }
                         }
-
                     panel.ResumeLayout(true);
                     }
 
-                // Подписки
+                // 1. Стандартные события панели
                 panel.Layout += (s, e) => ResizeLogic();
                 panel.SizeChanged += (s, e) => ResizeLogic();
-                panel.ControlAdded += (s, e) => ResizeLogic();
+
+                // 2. События добавления/удаления контролов
+                panel.ControlAdded += (s, e) =>
+                {
+                    // ВАЖНО: При добавлении кнопки подписываемся на смену её текста
+                    if (e.Control is CustomMaterialButton btn)
+                        {
+                        // Удаляем на всякий случай, чтобы не дублировать
+                        btn.TextChanged -= (sender, args) => ResizeLogic();
+                        // Подписываемся: Текст поменялся -> Пересчитать размеры!
+                        btn.TextChanged += (sender, args) => ResizeLogic();
+                        }
+                    ResizeLogic();
+                };
+
                 panel.ControlRemoved += (s, e) => ResizeLogic();
 
-                // Запуск
+                // 3. Первичная подписка для уже существующих кнопок (если они добавлены в дизайнере)
+                foreach (Control c in panel.Controls)
+                    {
+                    if (c is CustomMaterialButton btn)
+                        {
+                        btn.TextChanged -= (sender, args) => ResizeLogic();
+                        btn.TextChanged += (sender, args) => ResizeLogic();
+                        }
+                    }
+
                 ResizeLogic();
                 }
             catch (Exception ex)
@@ -208,7 +179,5 @@ namespace ATT_Wrapper.Services
                 Console.WriteLine($"[ThemeManager] Error setup fluid panel: {ex.Message}");
                 }
             }
-
-
         }
     }

@@ -7,7 +7,7 @@ namespace ATT_Wrapper
     // Обновленный интерфейс с 3-мя аргументами в onResult (status, message, groupKey)
     public interface ILogParser
         {
-        bool ParseLine(string line, Action<string, string, string> onResult, Action<string> onProgress);
+        bool ParseLine(string line, string statusFromLine, Action<string, string, string> onResult, Action<string> onProgress);
         }
 
     // 1. STANDARD TEST PARSER (Ваш обновленный код)
@@ -22,23 +22,27 @@ namespace ATT_Wrapper
         private static readonly Regex NetworkTestRegex = new Regex(@"Running task:\s+(Switch network to|Test bitrate.*?network:)\s+([^\x1b]+)(?:.*?)(\d+/\d+s)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex RunningTaskRegex = new Regex(@"Running task:\s+([^\x1b]+)(?:.*?)((?:\d+:\d+(?::\d+)?)|(?:\d+/\d+s))", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex ReportRegex = new Regex(@"<Report:([^>]+)>\s+created", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex UploaderRegex = new Regex(@"^\s*<Uploader:([^>]+)>\s+(.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex ResultRegex = new Regex(@"^\s*(PASS|FAIL|ERROR)\s+(.*)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex NextCloudMultilineRegex = new Regex(
+            @"(?s)(NextCloud).*?(\n|\r)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex UploaderRegex = new Regex(
+            @".*?<Uploader:([^>]+)>\s+(.*)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public JatlasTestParser(Action<int, string> updateRowCallback)
             {
             _updateRowCallback = updateRowCallback;
             }
 
-        public bool ParseLine(string line, Action<string, string, string> onResult, Action<string> onProgress)
+        public bool ParseLine(string line, string statusFromLine, Action<string, string, string> onResult, Action<string> onProgress)
             {
             if (CheckAndFlushErrors(line, onResult)) return false;
             if (TryHandleRenderErrors(line)) return true;
             if (TryHandleTaskProgress(line, onProgress)) return false;
             if (TryHandleReport(line, onResult, onProgress)) return true;
-            if (TryHandleUploaders(line, onResult)) return true;
-            //if (TryHandleNextCloudMultiline(line)) return true;
             if (TryHandleStandardResult(line, onResult)) return true;
+            if (TryHandleUploaders(line, statusFromLine, onResult)) return true;
 
             return false;
             }
@@ -110,34 +114,93 @@ namespace ATT_Wrapper
             return false;
             }
 
-        private bool TryHandleUploaders(string line, Action<string, string, string> onResult)
+        private bool TryHandleUploaders(string line, string statusFromLine, Action<string, string, string> onResult)
             {
+            // 1. ЛОГИКА МНОГОСТРОЧНОГО NEXTCLOUD (бывший TryHandleNextCloudMultiline)
+            // Если мы находимся в режиме ожидания ссылок от NextCloud
+            if (_lastUploaderRowIndex == -2)
+                {
+                if (line.Contains(".json"))
+                    {
+                    _updateRowCallback?.Invoke(-1, "Nextcloud: json report");
+                    _lastUploaderRowIndex = -1; // Сброс состояния
+                    return true;
+                    }
+                if (line.Contains(".html"))
+                    {
+                    _updateRowCallback?.Invoke(-1, "Nextcloud: html report");
+                    _lastUploaderRowIndex = -1; // Сброс состояния
+                    return true;
+                    }
+
+                // Проверка условия выхода из блока: если строка не пустая и не начинается с пробела
+                if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith(" "))
+                    {
+                    _lastUploaderRowIndex = -1;
+                    // Мы не делаем return true, так как эта строка может быть началом нового Uploader'а
+                    // и должна пройти проверку ниже.
+                    }
+                else
+                    {
+                    // Если это просто пустая строка или отступ без ссылок — пропускаем
+                    return false;
+                    }
+                }
+
+            // 2. СТАНДАРТНАЯ ЛОГИКА UPLOADER
             var match = UploaderRegex.Match(line);
             if (!match.Success) return false;
 
             string name = match.Groups[1].Value;
             string rawMsg = match.Groups[2].Value;
 
-            string status = rawMsg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) >= 0 ? "FAIL" : "PASS";
+            // Определение статуса
+            string status;
+
+            if (!string.IsNullOrEmpty(statusFromLine))
+                {
+                status = statusFromLine;
+                }
+            else
+                {
+                status = rawMsg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) >= 0 ? "FAIL" : "PASS";
+                }
+
             string displayMessage;
+
             if (name.Equals("NextCloud", StringComparison.OrdinalIgnoreCase))
                 {
                 if (status == "FAIL")
                     {
                     displayMessage = "NextCloud: Upload failed";
+                    _lastUploaderRowIndex = -1;
                     }
                 else
                     {
-                    displayMessage = rawMsg.Contains(".json") ? "NextCloud: JSON" :
-                                     rawMsg.Contains(".html") ? "NextCloud: HTML" :
-                                     "NextCloud: Upload successful";
-                    }
+                    // Если успех, проверяем, есть ли ссылка прямо в первой строке
+                    bool hasLink = rawMsg.Contains(".json") || rawMsg.Contains(".html");
 
-                _lastUploaderRowIndex = ( !rawMsg.Contains(".json") && !rawMsg.Contains(".html") && status != "FAIL" ) ? -2 : -1;
+                    if (hasLink)
+                        {
+                        displayMessage = rawMsg.Contains(".json") ? "NextCloud: JSON" : "NextCloud: HTML";
+                        _lastUploaderRowIndex = -1;
+                        }
+                    else
+                        {
+                        displayMessage = "NextCloud: Upload successful";
+                        // Включаем режим ожидания следующих строк (-2)
+                        _lastUploaderRowIndex = -2;
+                        }
+                    }
                 }
             else if (name.Equals("FeishuBot", StringComparison.OrdinalIgnoreCase))
                 {
-                displayMessage = status == "PASS" ? "FeishuBot: Succes" : "FeishuBot: Fail";
+                displayMessage = status == "PASS" ? "FeishuBot: Success" : "FeishuBot: Fail";
+                _lastUploaderRowIndex = -1;
+                }
+            else if (name.Equals("Webhook", StringComparison.OrdinalIgnoreCase))
+                {
+                displayMessage = status == "PASS" ? "Webhook: Success" : "Webhook: Fail";
                 _lastUploaderRowIndex = -1;
                 }
             else
@@ -146,34 +209,11 @@ namespace ATT_Wrapper
                 _lastUploaderRowIndex = -1;
                 }
 
-            // Ключ "uploader:..." для маппинга
+            // Формируем ключ и вызываем результат
             string mappingKey = $"uploader:{name.ToLower()}";
-            onResult?.Invoke(status,   rawMsg  , mappingKey);
+            onResult?.Invoke(status, rawMsg, mappingKey);
 
             return true;
-            }
-
-        private bool TryHandleNextCloudMultiline(string line)
-            {
-            if (_lastUploaderRowIndex != -2) return false;
-
-            if (line.Contains(".json"))
-                {
-                _updateRowCallback?.Invoke(-1, "Nextcloud: json report");
-                _lastUploaderRowIndex = -1;
-                return true;
-                }
-            if (line.Contains(".html"))
-                {
-                _updateRowCallback?.Invoke(-1, "Nextcloud: html report");
-                _lastUploaderRowIndex = -1;
-                return true;
-                }
-            if (line.Trim().Length > 0 && !line.StartsWith(" "))
-                {
-                _lastUploaderRowIndex = -1;
-                }
-            return false;
             }
 
         private bool TryHandleStandardResult(string line, Action<string, string, string> onResult)
@@ -193,7 +233,7 @@ namespace ATT_Wrapper
     public class JatlasUpdateParser : ILogParser
         {
         // Добавлен аргумент string group (Action<string, string, string>)
-        public bool ParseLine(string line, Action<string, string, string> onResult, Action<string> onProgress)
+        public bool ParseLine(string line, string statusFromLine, Action<string, string, string> onResult, Action<string> onProgress)
             {
             // Везде добавляем null третьим аргументом, так как для Update группа не критична
             if (line.Contains("No internet")) { onProgress?.Invoke("Waiting for internet..."); return false; }
@@ -216,7 +256,7 @@ namespace ATT_Wrapper
     public class JatlasAgingParser : ILogParser
         {
         // Добавлен аргумент string group (Action<string, string, string>)
-        public bool ParseLine(string line, Action<string, string, string> onResult, Action<string> onProgress)
+        public bool ParseLine(string line, string statusFromLine, Action<string, string, string> onResult, Action<string> onProgress)
             {
             var resultMatch = Regex.Match(line, @"^\s*(PASS|FAIL|ERROR)\s+(.*)", RegexOptions.IgnoreCase);
             if (resultMatch.Success)

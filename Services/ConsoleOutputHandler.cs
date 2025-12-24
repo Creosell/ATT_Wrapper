@@ -30,6 +30,7 @@ namespace ATT_Wrapper.Services
         // Matches OSC 0 sequences (Window Title)
         private static readonly Regex WindowTitleRegex = new Regex(@"\x1B\]0;.*?\x07", RegexOptions.Compiled);
         private static readonly Regex CursorForwardRegex = new Regex(@"\x1B\[(\d*)C", RegexOptions.Compiled);
+        
 
         // Группа 1: Имя задачи (все до символа ESC)
         // (?:.*?): Незахватывающая группа, лениво пропускаем ANSI-коды и пробелы
@@ -154,11 +155,12 @@ namespace ATT_Wrapper.Services
 
                     // Collapse "Loading...[CR]Done" -> "Done"
                     string collapsedLine = GetFinalLineState(rawLine);
+                    string statusFromLineColor = TryGetStatusFromColor(rawLine);
 
                     if (!string.IsNullOrEmpty(collapsedLine))
                         {
                         sbFinalOutput.Append(collapsedLine).Append('\n');
-                        ParseCleanLine(collapsedLine);
+                        ParseCleanLine(collapsedLine, statusFromLineColor);
                         }
 
                     lastNewlineIndex = i;
@@ -172,6 +174,17 @@ namespace ATT_Wrapper.Services
                 }
 
             return sbFinalOutput.ToString();
+            }
+
+        private string TryGetStatusFromColor(string line)
+            {
+            // Проверяем наличие кодов цвета. 
+            // Обычно они идут как \x1B[31m, но метод Contains найдет "[31m" в любой вариации.
+
+            if (line.Contains("[31m")) return "FAIL"; // Красный цвет -> Ошибка
+            if (line.Contains("[32m")) return "PASS"; // Зеленый цвет -> Успех
+
+            return null; // Цвет не найден или нейтральный
             }
 
         private string GetFinalLineState(string rawLine)
@@ -242,14 +255,14 @@ namespace ATT_Wrapper.Services
             return string.IsNullOrEmpty(clean);
             }
 
-        private void ParseCleanLine(string lineWithColors)
+        private void ParseCleanLine(string lineWithColors, string statusFromLineColor)
             {
             string cleanLine = AnsiAllRegex.Replace(lineWithColors, "").Trim();
             if (!string.IsNullOrWhiteSpace(cleanLine))
                 {
                 try
                     {
-                    _parser.ParseLine(cleanLine,
+                    _parser.ParseLine(cleanLine,statusFromLineColor,
                                             (status, msg, group) =>
                                             {
                                                 // --- ЛОГИКА МАРШРУТИЗАЦИИ ---
