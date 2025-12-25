@@ -1,4 +1,5 @@
 ﻿using ATT_Wrapper.Components;
+using ATT_Wrapper.Parsing;
 using ATT_Wrapper.Services;
 using MaterialSkin;
 using MaterialSkin.Controls;
@@ -11,6 +12,7 @@ using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+
 
 namespace ATT_Wrapper
     {
@@ -381,7 +383,7 @@ namespace ATT_Wrapper
                     "run-jatlas-auto.bat", "-l special --stage dev");
 
         private void AgingATT(object sender, EventArgs e) =>
-            RunTest(new JatlasAgingParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
+            RunTest(new JatlasTestParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
 
         private void CommonOfflineATT(object sender, EventArgs e) =>
             RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
