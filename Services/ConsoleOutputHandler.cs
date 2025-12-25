@@ -19,10 +19,14 @@ namespace ATT_Wrapper.Services
         private readonly StringBuilder _lineBuffer = new StringBuilder();
         private readonly object _bufferLock = new object();
 
+        private readonly StringBuilder _uiBackBuffer = new StringBuilder();
+        private readonly object _uiBufferLock = new object();
+        private readonly Timer _uiUpdateTimer;
+        private RichTextBox _attachedRtb = null;
+
         private static readonly Regex AnsiSplitRegex = new Regex(@"(\x1B\[[0-9;?]*[ -/]*[@-~])", RegexOptions.Compiled);
         private static readonly Regex AnsiAllRegex = new Regex(@"(\x1B\[[\x30-\x3F]*[\x20-\x2F]*[\x40-\x7E]|\x1B\][^\x07\x1B]*(\x07|\x1B\\)|\x1B[PX^_].*?(\x07|\x1B\\))", RegexOptions.Compiled);
-        private static readonly Regex PausePromptRegex = new Regex(@"(Press any key|Press Enter|any key to continue)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex UiCleanerRegex = new Regex(@"Press any key to continue( \. \. \.)?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex PauseCleanerRegex = new Regex(@"Press any key to continue( \. \. \.)?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         // Catches carriage return (\r) and cursor position (H)
         private static readonly Regex LineResetRegex = new Regex(@"(\r|\x1B\[\d+;\d+[Hf]|\x1B\[\d+[Hf])", RegexOptions.Compiled);
@@ -30,6 +34,9 @@ namespace ATT_Wrapper.Services
         // Matches OSC 0 sequences (Window Title)
         private static readonly Regex WindowTitleRegex = new Regex(@"\x1B\]0;.*?\x07", RegexOptions.Compiled);
         private static readonly Regex CursorForwardRegex = new Regex(@"\x1B\[(\d*)C", RegexOptions.Compiled);
+
+        // Positional codes
+        private static readonly Regex PositionalCodesRegex = new Regex(@"\x1B\[\d+(;\d+)?[Hf]", RegexOptions.Compiled);
         
 
         // Группа 1: Имя задачи (все до символа ESC)
@@ -60,6 +67,12 @@ namespace ATT_Wrapper.Services
             _statusManager = statusManager;
             _statusCallback = statusCallback;
             _enterCallback = enterCallback;
+
+            _uiUpdateTimer = new Timer
+                {
+                Interval = 50 // Обновление раз в 50мс (20 FPS)
+                };
+            _uiUpdateTimer.Tick += OnUiTimerTick;
 
             Log.Information("Initialized.");
             }
@@ -102,6 +115,12 @@ namespace ATT_Wrapper.Services
             {
             if (string.IsNullOrEmpty(rawChunk)) return;
 
+            if (_attachedRtb != rtbLog)
+                {
+                _attachedRtb = rtbLog;
+                if (!_uiUpdateTimer.Enabled) _uiUpdateTimer.Start();
+                }
+
             //LogRawChunk(rawChunk);
 
             StatusUpdate(rawChunk);
@@ -130,8 +149,27 @@ namespace ATT_Wrapper.Services
 
             if (!string.IsNullOrEmpty(linesToPrint))
                 {
-                UpdateUi(linesToPrint, rtbLog);
+                UpdateUi(linesToPrint);
                 }
+            }
+
+        private void OnUiTimerTick(object sender, EventArgs e)
+            {
+            if (_attachedRtb == null || _attachedRtb.IsDisposed) return;
+
+            string textToPrint;
+            lock (_uiBufferLock)
+                {
+                if (_uiBackBuffer.Length == 0) return;
+                textToPrint = _uiBackBuffer.ToString();
+                _uiBackBuffer.Clear();
+                }
+
+            // Вызываем Invoke только один раз за такт таймера
+            if (_attachedRtb.InvokeRequired)
+                _attachedRtb.BeginInvoke(new Action(() => AppendTextToRichTextBox(_attachedRtb, textToPrint)));
+            else
+                AppendTextToRichTextBox(_attachedRtb, textToPrint);
             }
 
         private string ExtractCompleteLinesLocked()
@@ -292,7 +330,7 @@ namespace ATT_Wrapper.Services
 
             // Check remaining buffer for pause prompts
             string cleanBuffer = AnsiAllRegex.Replace(_lineBuffer.ToString(), "");
-            if (PausePromptRegex.IsMatch(cleanBuffer))
+            if (PauseCleanerRegex.IsMatch(cleanBuffer))
                 {
                 _lineBuffer.Clear();
                 _statusCallback?.Invoke("Auto-continuing...");
@@ -300,7 +338,7 @@ namespace ATT_Wrapper.Services
                 }
             }
 
-        private void UpdateUi(string finalText, RichTextBox rtbLog)
+        private void UpdateUi(string finalText)
             {
             var sbUi = new StringBuilder();
             var lines = finalText.Split('\n');
@@ -310,32 +348,31 @@ namespace ATT_Wrapper.Services
                 // Preserve structural newlines, skip split artifact
                 if (line == "" && lines[lines.Length - 1] == line) continue;
 
-                string cleanContent = AnsiAllRegex.Replace(line, "").Trim();
+                string cleanedLine = AnsiAllRegex.Replace(line, "").Trim();
 
                 // Filters
-                if (cleanContent.StartsWith("Running task", StringComparison.OrdinalIgnoreCase)) continue;
-                if (cleanContent.Contains("]0;") && cleanContent.Contains("cmd.exe") && cleanContent.Length < 50) continue;
+                if (cleanedLine.StartsWith("Running task", StringComparison.OrdinalIgnoreCase)) continue;
+                if (cleanedLine.Contains("]0;") && cleanedLine.Contains("cmd.exe") && cleanedLine.Length < 50) continue;
 
-                string lineForUi = UiCleanerRegex.Replace(line, "");
+                string cleanedLineForUi = PauseCleanerRegex.Replace(line, "");
 
                 // Remove positioning codes
-                lineForUi = Regex.Replace(lineForUi, @"\x1B\[\d+(;\d+)?[Hf]", "");
+                cleanedLineForUi = PositionalCodesRegex.Replace(cleanedLineForUi, "");
 
                 // Convert cursor movement to spaces before stripping ANSI
-                lineForUi = ReplaceCursorMovementWithSpaces(lineForUi);
+                cleanedLineForUi = ReplaceCursorMovementWithSpaces(cleanedLineForUi);
 
-                lineForUi = lineForUi.Replace("\x1B[K", "");
-                lineForUi = WindowTitleRegex.Replace(lineForUi, "");
-
-                string cleanedForCheck = AnsiAllRegex.Replace(lineForUi, "");
+                // Additional cleaning filteres
+                cleanedLineForUi = cleanedLineForUi.Replace("\x1B[K", "");
+                cleanedLineForUi = WindowTitleRegex.Replace(cleanedLineForUi, "");
 
                 // Skip purely ANSI lines
-                if (string.IsNullOrWhiteSpace(cleanedForCheck) && !string.IsNullOrWhiteSpace(AnsiAllRegex.Replace(line, "")))
+                if (string.IsNullOrWhiteSpace(cleanedLineForUi) && !string.IsNullOrWhiteSpace(cleanedLine))
                     {
                     continue;
                     }
 
-                sbUi.Append(lineForUi).Append('\n');
+                sbUi.Append(cleanedLineForUi).Append('\n');
                 }
 
             string textToAppend = sbUi.ToString();
@@ -343,10 +380,10 @@ namespace ATT_Wrapper.Services
 
             Log.Debug($"[UI Render] {SanitizeForLog(textToAppend)}");
 
-            if (rtbLog.InvokeRequired)
-                rtbLog.BeginInvoke(new Action(() => AppendTextToRichTextBox(rtbLog, textToAppend)));
-            else
-                AppendTextToRichTextBox(rtbLog, textToAppend);
+            lock (_uiBufferLock)
+                {
+                _uiBackBuffer.Append(textToAppend);
+                }
             }
 
         private string ReplaceCursorMovementWithSpaces(string text)
@@ -500,6 +537,8 @@ namespace ATT_Wrapper.Services
 
         public void Dispose()
             {
+            _uiUpdateTimer.Stop();
+            _uiUpdateTimer.Dispose();
             Log.Information("Disposing resources.");
             _lineBuffer.Clear();
             }

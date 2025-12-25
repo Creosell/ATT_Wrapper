@@ -13,7 +13,6 @@ namespace ATT_Wrapper
     // 1. STANDARD TEST PARSER (Ваш обновленный код)
     public class JatlasTestParser : ILogParser
         {
-        private int _lastUploaderRowIndex = -1;
         private readonly Action<int, string> _updateRowCallback;
         private readonly List<string> _renderErrors = new List<string>();
 
@@ -30,6 +29,13 @@ namespace ATT_Wrapper
             @".*?<Uploader:([^>]+)>\s+(.*)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        private enum ParserState
+            {
+            Standard,                   // Обычный режим
+            WaitingForNextCloudMultiline // Ждем продолжения отчета (json/html)
+            }
+        private ParserState _currentState = ParserState.Standard;
+
         public JatlasTestParser(Action<int, string> updateRowCallback)
             {
             _updateRowCallback = updateRowCallback;
@@ -37,6 +43,11 @@ namespace ATT_Wrapper
 
         public bool ParseLine(string line, string statusFromLine, Action<string, string, string> onResult, Action<string> onProgress)
             {
+            if (_currentState == ParserState.WaitingForNextCloudMultiline)
+                {
+                if (TryHandleNextCloudContinuation(line)) return true;
+                }
+
             if (CheckAndFlushErrors(line, onResult)) return false;
             if (TryHandleRenderErrors(line)) return true;
             if (TryHandleTaskProgress(line, onProgress)) return false;
@@ -116,104 +127,61 @@ namespace ATT_Wrapper
 
         private bool TryHandleUploaders(string line, string statusFromLine, Action<string, string, string> onResult)
             {
-            // 1. ЛОГИКА МНОГОСТРОЧНОГО NEXTCLOUD (бывший TryHandleNextCloudMultiline)
-            // Если мы находимся в режиме ожидания ссылок от NextCloud
-            if (_lastUploaderRowIndex == -2)
-                {
-                if (line.Contains(".json"))
-                    {
-                    _updateRowCallback?.Invoke(-1, "Nextcloud: json report");
-                    _lastUploaderRowIndex = -1; // Сброс состояния
-                    return true;
-                    }
-                if (line.Contains(".html"))
-                    {
-                    _updateRowCallback?.Invoke(-1, "Nextcloud: html report");
-                    _lastUploaderRowIndex = -1; // Сброс состояния
-                    return true;
-                    }
-
-                // Проверка условия выхода из блока: если строка не пустая и не начинается с пробела
-                if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith(" "))
-                    {
-                    _lastUploaderRowIndex = -1;
-                    // Мы не делаем return true, так как эта строка может быть началом нового Uploader'а
-                    // и должна пройти проверку ниже.
-                    }
-                else
-                    {
-                    // Если это просто пустая строка или отступ без ссылок — пропускаем
-                    return false;
-                    }
-                }
-
-            // 2. СТАНДАРТНАЯ ЛОГИКА UPLOADER
             var match = UploaderRegex.Match(line);
             if (!match.Success) return false;
 
             string name = match.Groups[1].Value;
             string rawMsg = match.Groups[2].Value;
 
-            // Определение статуса
-            string status;
+            // Приоритет: 1. Цвет (извне), 2. Текст "fail" внутри сообщения
+            string status = !string.IsNullOrEmpty(statusFromLine)
+                ? statusFromLine
+                : ( rawMsg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) >= 0 ? "FAIL" : "PASS" );
 
-            if (!string.IsNullOrEmpty(statusFromLine))
-                {
-                status = statusFromLine;
-                }
-            else
-                {
-                status = rawMsg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) >= 0 ? "FAIL" : "PASS";
-                }
-
-            string displayMessage;
-
+            // Логика переключения состояний для NextCloud
             if (name.Equals("NextCloud", StringComparison.OrdinalIgnoreCase))
                 {
                 if (status == "FAIL")
                     {
-                    displayMessage = "NextCloud: Upload failed";
-                    _lastUploaderRowIndex = -1;
+                    _currentState = ParserState.Standard;
                     }
                 else
                     {
-                    // Если успех, проверяем, есть ли ссылка прямо в первой строке
+                    // Если ссылка уже есть в первой строке — ждать не нужно
                     bool hasLink = rawMsg.Contains(".json") || rawMsg.Contains(".html");
-
-                    if (hasLink)
-                        {
-                        displayMessage = rawMsg.Contains(".json") ? "NextCloud: JSON" : "NextCloud: HTML";
-                        _lastUploaderRowIndex = -1;
-                        }
-                    else
-                        {
-                        displayMessage = "NextCloud: Upload successful";
-                        // Включаем режим ожидания следующих строк (-2)
-                        _lastUploaderRowIndex = -2;
-                        }
+                    _currentState = hasLink ? ParserState.Standard : ParserState.WaitingForNextCloudMultiline;
                     }
                 }
-            else if (name.Equals("FeishuBot", StringComparison.OrdinalIgnoreCase))
-                {
-                displayMessage = status == "PASS" ? "FeishuBot: Success" : "FeishuBot: Fail";
-                _lastUploaderRowIndex = -1;
-                }
-            else if (name.Equals("Webhook", StringComparison.OrdinalIgnoreCase))
-                {
-                displayMessage = status == "PASS" ? "Webhook: Success" : "Webhook: Fail";
-                _lastUploaderRowIndex = -1;
-                }
-            else
-                {
-                displayMessage = status == "FAIL" ? $"{name}: Operation failed" : $"{name}: Success";
-                _lastUploaderRowIndex = -1;
-                }
 
-            // Формируем ключ и вызываем результат
+            // Формируем ключ и отправляем
             string mappingKey = $"uploader:{name.ToLower()}";
             onResult?.Invoke(status, rawMsg, mappingKey);
-
             return true;
+            }
+
+        private bool TryHandleNextCloudContinuation(string line)
+            {
+            if (line.Contains(".json"))
+                {
+                _updateRowCallback?.Invoke(-1, "Nextcloud: json report");
+                _currentState = ParserState.Standard; // Сброс состояния
+                return true;
+                }
+            if (line.Contains(".html"))
+                {
+                _updateRowCallback?.Invoke(-1, "Nextcloud: html report");
+                _currentState = ParserState.Standard; // Сброс
+                return true;
+                }
+
+            // Если строка не пустая и не пробел — значит блок NextCloud закончился
+            if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith(" "))
+                {
+                _currentState = ParserState.Standard;
+                return false; // Отдаем строку другим парсерам
+                }
+
+            return false; // Пустая строка внутри блока — игнорируем
             }
 
         private bool TryHandleStandardResult(string line, Action<string, string, string> onResult)
