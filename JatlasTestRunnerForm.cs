@@ -13,22 +13,26 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-
 namespace ATT_Wrapper
     {
+    /// <summary>
+    /// Главная форма приложения. Управляет запуском тестов, отображением логов
+    /// и взаимодействием с пользователем.
+    /// </summary>
     public partial class JatlasTestRunnerForm : MaterialForm
         {
         private const string SCRIPT_PATH = @"C:\jatlas\scripts\win_scripts\";
-        private MaterialSkinManager materialSkinManager;
 
+        private MaterialSkinManager _materialSkinManager;
         private ProcessExecutor _executor;
         private ResultsGridController _gridController;
         private MappingManager _mapper;
-        private string _mainLogPath;
         private ConsoleOutputHandler _outputHandler;
         private ToolStripLoadingSpinner _loadingSpinner;
-        private Action _onTaskFinished;
         private ReportStatusManager _reportStatusManager;
+
+        private string _mainLogPath;
+        private Action _onTaskFinished;
         private bool _isTaskRunning = false;
 
         /// <summary>
@@ -42,102 +46,106 @@ namespace ATT_Wrapper
                 {
                 _isTaskRunning = value;
                 // Автоматически переключаем кнопки в UI потоке
-                // !value значит: если задача бежит (true), кнопки выключены (false)
+                // Если задача бежит (true) -> кнопки выключены (false)
                 this.BeginInvoke((Action)( () => ToggleButtons(!value) ));
-                if (_isTaskRunning == false)
+
+                if (!_isTaskRunning)
                     {
                     SetStatus("Ready");
-                    } 
+                    }
                 }
             }
 
         public JatlasTestRunnerForm()
             {
             InitializeComponent();
-
-            // Center window
             CenterAppWindow();
-
-            // Setup logging
             SetupLogging();
-
-            // Setup DataGridView
             SetupDataGridView();
-
-            // Setup theme
             SetupTheme();
-
-            // Initialize loading spinner in status bar
             InitializeLoadingSpinner();
-
-            // Setup focus behavior
             SetupFocus();
             }
+
+        // --- Lifecycle Methods ---
 
         private async void JatlasTestRunnerForm_Load(object sender, EventArgs e)
             {
             await CheckUpdateStatusAsync();
             }
 
+        protected override void OnShown(EventArgs e)
+            {
+            base.OnShown(e);
+            // Сбрасываем активный фокус, чтобы ни одна кнопка не была подсвечена при старте
+            this.ActiveControl = null;
+            }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+            {
+            Log.Information("Form closing");
+            _executor?.Kill();
+            _executor?.Dispose();
+            _outputHandler?.Dispose();
+            Log.CloseAndFlush();
+            base.OnFormClosing(e);
+            }
+
+        // --- Setup & Initialization ---
+
+        /// <summary>
+        /// Центрирует окно приложения на текущем мониторе.
+        /// </summary>
         private void CenterAppWindow()
             {
-
             Screen screen = Screen.FromControl(this);
-
-            // WorkingArea — это область экрана БЕЗ панели задач
             Rectangle workingArea = screen.WorkingArea;
 
-            // Вычисляем координаты левого верхнего угла для центра
             int x = workingArea.X + ( workingArea.Width - this.Width ) / 2;
             int y = workingArea.Y + ( workingArea.Height - this.Height ) / 2;
 
-            // Если по Y мы улезаем вверх (из-за заголовка), ставим 0
             if (y < workingArea.Y) y = workingArea.Y;
 
-            // Применяем
             this.Location = new Point(x, y);
             }
 
+        /// <summary>
+        /// Настраивает Serilog для записи логов в файл и окно отладки.
+        /// </summary>
         private void SetupLogging()
             {
             string logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
             if (!Directory.Exists(logDirectory)) Directory.CreateDirectory(logDirectory);
             _mainLogPath = Path.Combine(logDirectory, "jatlas_runner.log");
 
-            // Clear existing log file
+            // Очистка старого лога
             if (File.Exists(_mainLogPath))
                 {
                 try { File.Delete(_mainLogPath); }
                 catch (Exception ex) { Debug.WriteLine($"Could not clear log file: {ex.Message}"); }
                 }
 
-            // Configure Serilog with CallerEnricher
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .Enrich.With(new CallerEnricher())
-                .WriteTo.Debug(
-                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{Caller}] {Message:lj}{NewLine}{Exception}"
-                )
-                .WriteTo.File(
-                    _mainLogPath,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [{Caller}] {Message:lj}{NewLine}{Exception}"
-                )
+                .WriteTo.Debug(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{Caller}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.File(_mainLogPath, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [{Caller}] {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
 
             Log.Information("=== App Started ===");
             Log.Information($"Log file: {_mainLogPath}");
             }
 
+        /// <summary>
+        /// Применяет тему Material Design и настраивает менеджер иконок статуса.
+        /// </summary>
         private void SetupTheme()
             {
-            // Visual setup
-            // Инициализация MaterialSkin
-            materialSkinManager = MaterialSkinManager.Instance;
-            materialSkinManager.AddFormToManage(this);
-            materialSkinManager.Theme = MaterialSkinManager.Themes.LIGHT;
+            _materialSkinManager = MaterialSkinManager.Instance;
+            _materialSkinManager.AddFormToManage(this);
+            _materialSkinManager.Theme = MaterialSkinManager.Themes.LIGHT;
 
-            // Цветовая палитра Material Design
-            materialSkinManager.ColorScheme = new ColorScheme(
+            _materialSkinManager.ColorScheme = new ColorScheme(
                 Primary.BlueGrey500,
                 Primary.BlueGrey700,
                 Primary.LightBlue100,
@@ -145,43 +153,35 @@ namespace ATT_Wrapper
                 TextShade.WHITE
             );
 
-            // Инициализация менеджера
+            // Инициализация менеджера статусов (только один раз!)
             _reportStatusManager = new ReportStatusManager();
 
-            // === РЕГИСТРАЦИЯ ЗАГРУЗЧИКОВ ===
-
-            // 1. Nextcloud
+            // Регистрация загрузчиков
             if (NextсloudStatusIcon != null && NextсloudStatusLabel != null)
-                {
                 _reportStatusManager.Register("nextcloud", NextсloudStatusIcon, NextсloudStatusLabel);
-                }
 
-            // 2. Calydon
             if (CalydonStatusIcon != null && CalydonStatusLabel != null)
-                {
                 _reportStatusManager.Register("webhook", CalydonStatusIcon, CalydonStatusLabel);
-                }
 
-            // 3. FeishuBot
             if (FeishuStatusIcon != null && FeishuStatusLabel != null)
-                {
                 _reportStatusManager.Register("feishubot", FeishuStatusIcon, FeishuStatusLabel);
-                }
 
-            // Custom theme manager
             ThemeManager.Apply(this, dgvResults, rtbLog, mainButtonsLayoutPanel, extraButtonsLayoutPanel, ReportStatusLayoutPanel);
             }
 
+        /// <summary>
+        /// Инициализирует контроллер таблицы результатов.
+        /// </summary>
         private void SetupDataGridView()
             {
-            // Mapping setup
             string mappingPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mappings.json");
             _mapper = new MappingManager(mappingPath);
-
-            // ResultGrid setup
             _gridController = new ResultsGridController(dgvResults, _mapper);
             }
 
+        /// <summary>
+        /// Пересоздает исполнителя процессов, подписываясь на события вывода.
+        /// </summary>
         private void InitializeExecutor()
             {
             if (_executor != null)
@@ -200,6 +200,47 @@ namespace ATT_Wrapper
             _executor.OnExited += HandleExit;
             }
 
+        /// <summary>
+        /// Добавляет кастомный спиннер загрузки в статус-бар.
+        /// </summary>
+        private void InitializeLoadingSpinner()
+            {
+            _loadingSpinner = new ToolStripLoadingSpinner
+                {
+                SpinnerColor = _materialSkinManager.ColorScheme.AccentColor,
+                Visible = false,
+                Alignment = ToolStripItemAlignment.Right
+                };
+
+            statusStrip.Items.Insert(0, _loadingSpinner);
+
+            statusLabel.TextChanged += (s, e) =>
+            {
+                bool isReady = statusLabel.Text == "Ready";
+                _loadingSpinner.Visible = !isReady;
+            };
+            }
+
+        /// <summary>
+        /// Настраивает поведение фокуса, чтобы клики не оставляли выделение на элементах.
+        /// </summary>
+        private void SetupFocus()
+            {
+            void removeFocus(object s, MouseEventArgs e)
+                {
+                this.ActiveControl = null;
+                }
+
+            tabControlOutput.MouseDown += removeFocus;
+            tabControlActions.MouseDown += removeFocus;
+            dgvResults.MouseDown += removeFocus;
+            }
+
+        // --- Core Logic ---
+
+        /// <summary>
+        /// Асинхронно проверяет наличие обновлений в репозитории.
+        /// </summary>
         private async Task CheckUpdateStatusAsync()
             {
             if (IsTaskRunning) return;
@@ -207,20 +248,15 @@ namespace ATT_Wrapper
             try
                 {
                 IsTaskRunning = true;
-
-                // Создаем экземпляр нашего нового сервиса
-                var checker = new UpdateChecker();
-
                 SetStatus("Checking updates...");
 
-
+                var checker = new UpdateChecker();
                 LogResult checkResult = await checker.IsUpdateAvailable();
 
                 if (checkResult.Level == LogLevel.Pass && checkResult.Message.Equals("Updates found"))
                     {
-                    // Если есть обновление - выделяем кнопку
                     btnUpdate.Text = "Update available";
-                    btnUpdate.UseAccentColor = true; 
+                    btnUpdate.UseAccentColor = true;
                     }
                 else if (checkResult.Level == LogLevel.Fail)
                     {
@@ -229,39 +265,33 @@ namespace ATT_Wrapper
                     }
                 else
                     {
-                    // Если обновлений нет, возвращаем обычный текст
                     btnUpdate.Text = "Update";
                     btnUpdate.UseAccentColor = false;
                     }
                 }
             catch (Exception ex)
                 {
-                // Если что-то пошло не так (нет интернета и т.д.), просто логируем и оставляем всё как есть
-                Console.WriteLine($"Update check failed: {ex.Message}");
+                Log.Error($"Update check failed: {ex.Message}");
                 }
             finally
                 {
-                    IsTaskRunning = false;
+                IsTaskRunning = false;
                 }
             }
 
-        private void SetStatus(string status)
-            {
-            this.BeginInvoke((Action)( () =>
-            {
-                if (statusLabel != null)
-                    {
-                    statusLabel.Text = status;
-                    }
-            } ));
-            }
-
-        // --- RUN LOGIC ---
-
+        /// <summary>
+        /// Запускает выполнение тестового скрипта.
+        /// </summary>
+        /// <param name="parser">Парсер логов для конкретного типа теста.</param>
+        /// <param name="script">Имя скрипта (bat-файла).</param>
+        /// <param name="args">Аргументы запуска.</param>
+        /// <param name="onFinished">Колбэк, вызываемый после завершения процесса.</param>
         private void RunTest(ILogParser parser, string script, string args, Action onFinished = null)
             {
             IsTaskRunning = true;
             _onTaskFinished = onFinished;
+
+            // Очистка UI перед запуском
             _gridController.Clear();
             rtbLog.Clear();
             _reportStatusManager?.ResetAll();
@@ -269,7 +299,6 @@ namespace ATT_Wrapper
             if (statusLabel != null) statusLabel.Text = "Initializing...";
 
             _outputHandler?.Dispose();
-
             InitializeExecutor();
 
             Log.Information($"Creating output handler for script: {script}");
@@ -288,7 +317,6 @@ namespace ATT_Wrapper
 
             try
                 {
-                // Force color output for terminals
                 Environment.SetEnvironmentVariable("TERM", "xterm-256color");
                 Environment.SetEnvironmentVariable("FORCE_COLOR", "1");
 
@@ -298,33 +326,17 @@ namespace ATT_Wrapper
                     {
                     Log.Error($"Script file not found: {fullPath}");
                     MessageBox.Show($"Script not found: {fullPath}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    ToggleButtons(true);
+                    IsTaskRunning = false; // Разблокируем вручную, т.к. процесс не стартовал
                     return;
                     }
 
                 string cmdPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
+                string commandLine = string.IsNullOrWhiteSpace(args)
+                    ? $"\"{cmdPath}\" /c \"{fullPath}\""
+                    : $"\"{cmdPath}\" /c \"\"{fullPath}\" {args}\"";
 
-                // Construct command line for batch files
-                string commandLine;
-                if (string.IsNullOrWhiteSpace(args))
-                    {
-                    commandLine = $"\"{cmdPath}\" /c \"{fullPath}\"";
-                    }
-                else
-                    {
-                    commandLine = $"\"{cmdPath}\" /c \"\"{fullPath}\" {args}\"";
-                    }
-
-                Log.Information($"Starting test:");
-                Log.Information($"  Script: {script}");
-                Log.Information($"  Args: {args}");
-                Log.Information($"  Full path: {fullPath}");
-                Log.Information($"  Command: {commandLine}");
-                Log.Information($"  On Finished: {onFinished}");
-
+                Log.Information($"Starting test: {commandLine}");
                 _executor.Start(commandLine);
-
-                Log.Information("Process started successfully");
                 }
             catch (Exception ex)
                 {
@@ -334,13 +346,40 @@ namespace ATT_Wrapper
                 }
             }
 
+        /// <summary>
+        /// Обновляет текст в статус-баре (thread-safe).
+        /// </summary>
+        private void SetStatus(string status)
+            {
+            this.BeginInvoke((Action)( () =>
+            {
+                if (statusLabel != null)
+                    {
+                    statusLabel.Text = status;
+                    }
+            } ));
+            }
+
+        private void ToggleButtons(bool enabled)
+            {
+            foreach (Control c in this.Controls) EnableRecursive(c, enabled);
+            if (taskKillBtnMain != null) taskKillBtnMain.Enabled = true;
+            }
+
+        private void EnableRecursive(Control c, bool enabled)
+            {
+            if (c is Button && !c.Name.Contains("Kill")) c.Enabled = enabled;
+            if (c.HasChildren) foreach (Control child in c.Controls) EnableRecursive(child, enabled);
+            }
+
+        // --- Event Handlers ---
+
         private void HandleOutput(string line)
             {
             if (this.IsDisposed || !this.IsHandleCreated) return;
 
             try
                 {
-                // Pass output to handler for UI update and parsing
                 if (_outputHandler != null)
                     {
                     this.BeginInvoke((Action)( () =>
@@ -354,10 +393,6 @@ namespace ATT_Wrapper
                             Log.Error(ex, "Error processing line in output handler");
                             }
                     } ));
-                    }
-                else
-                    {
-                    Log.Warning("OutputHandler is null when trying to process line");
                     }
                 }
             catch (Exception ex)
@@ -384,121 +419,42 @@ namespace ATT_Wrapper
             } ));
             }
 
-        // --- BUTTONS ---
+        // --- Button Click Handlers ---
+
         private void UpdateATT(object sender, EventArgs e) =>
              RunTest(
                  new JatlasUpdateParser(),
                  "update.bat",
                  "",
-                 // Передаем действие, которое выполнится после закрытия консоли
                  async () => await CheckUpdateStatusAsync()
              );
 
         private void CommonATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser(), // Аргументы удалены
-                    "run-jatlas-auto.bat", "-l common --stage dev");
+            RunTest(new JatlasTestParser(), "run-jatlas-auto.bat", "-l common --stage dev");
 
         private void SpecialATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser(), // Аргументы удалены
-                    "run-jatlas-auto.bat", "-l special --stage dev");
+            RunTest(new JatlasTestParser(), "run-jatlas-auto.bat", "-l special --stage dev");
 
         private void AgingATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser(), // Здесь уже было пусто, оставляем
-                    "run-jatlas-auto.bat", "-l aging --stage dev");
+            RunTest(new JatlasTestParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
 
         private void CommonOfflineATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser(), // Аргументы удалены
-                    "run-jatlas-auto.bat", "-l common --offline");
+            RunTest(new JatlasTestParser(), "run-jatlas-auto.bat", "-l common --offline");
 
         private void MockReportATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser(), // Аргументы удалены
-            "run-jatlas.bat",
-            "suites\\SDNB-M16iA.yaml -l common --stage dev");
+            RunTest(new JatlasTestParser(), "run-jatlas.bat", "suites\\SDNB-M16iA.yaml -l common --stage dev");
 
         private void KillTask(object sender, EventArgs e)
             {
             Log.Information("Kill button clicked");
-
             _executor?.Kill();
-
-            IsTaskRunning = false;
             }
 
-        private void ToggleButtons(bool enabled)
-            {
-            foreach (Control c in this.Controls) EnableRecursive(c, enabled);
-            if (taskKillBtnMain != null) taskKillBtnMain.Enabled = true;
-            }
+        // --- Helpers ---
 
-        private void EnableRecursive(Control c, bool enabled)
-            {
-            if (c is Button && !c.Name.Contains("Kill")) c.Enabled = enabled;
-            if (c.HasChildren) foreach (Control child in c.Controls) EnableRecursive(child, enabled);
-            }
-
-        protected override void OnFormClosing(FormClosingEventArgs e)
-            {
-            Log.Information("Form closing");
-            _executor?.Kill();
-            _executor?.Dispose();
-            _outputHandler?.Dispose();
-            Log.CloseAndFlush();
-            base.OnFormClosing(e);
-            }
-
-        private void InitializeLoadingSpinner()
-            {
-
-            // 1. Создаем наш кастомный спиннер
-            _loadingSpinner = new ToolStripLoadingSpinner
-                {
-                SpinnerColor = materialSkinManager.ColorScheme.AccentColor, // Берем цвет из темы!
-                Visible = false, // Скрыт по умолчанию
-
-                // Выравниваем его вправо или сразу после текста (по желанию)
-                Alignment = ToolStripItemAlignment.Right
-                };
-
-            // 2. Добавляем его в статус-бар
-            statusStrip.Items.Insert(0, _loadingSpinner);
-
-            // 3. Подписываемся на изменение текста лейбла
-            statusLabel.TextChanged += (s, e) =>
-            {
-                bool isReady = statusLabel.Text == "Ready";
-                // Показываем спиннер, если статус НЕ Ready
-                _loadingSpinner.Visible = !isReady;
-            };
-            }
-
-        private void SetupFocus()
-            {
-            void removeFocus(object s, MouseEventArgs e)
-                {
-                // ActiveControl = null убирает фокус с текущего элемента формы
-                this.ActiveControl = null;
-                }
-
-            // 3. Применяем этот хак к обоим TabControl
-            tabControlOutput.MouseDown +=  removeFocus ;
-            tabControlActions.MouseDown +=  removeFocus ;
-
-            dgvResults.MouseDown +=  removeFocus ;
-
-            }
-
-        protected override void OnShown(EventArgs e)
-            {
-            base.OnShown(e);
-
-            // Сбрасываем активный фокус, чтобы ни одна кнопка не была подсвечена
-            this.ActiveControl = null;
-
-            // Если нужно, чтобы фокус был на таблице, но без выделения строки:
-            // dgvResults.Focus();
-            }
-
-
+        /// <summary>
+        /// Вспомогательный класс для добавления имени метода в логи Serilog.
+        /// </summary>
         public class CallerEnricher : ILogEventEnricher
             {
             public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
@@ -512,7 +468,6 @@ namespace ATT_Wrapper
                     var method = stack.GetMethod();
                     var declaringType = method.DeclaringType;
 
-                    // Skip Serilog internal frames
                     if (declaringType == null || declaringType.Assembly.GetName().Name.StartsWith("Serilog"))
                         {
                         skip++;
@@ -525,6 +480,5 @@ namespace ATT_Wrapper
                     }
                 }
             }
-
         }
     }
