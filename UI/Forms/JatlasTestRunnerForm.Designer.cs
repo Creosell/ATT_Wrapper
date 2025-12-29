@@ -171,7 +171,7 @@
             this.dgvResults.RowHeadersWidth = 51;
             this.dgvResults.RowTemplate.Height = 12;
             this.dgvResults.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvResults.Size = new System.Drawing.Size(539, 452);
+            this.dgvResults.Size = new System.Drawing.Size(651, 548);
             this.dgvResults.TabIndex = 1;
             this.dgvResults.TabStop = false;
             // 
@@ -181,9 +181,9 @@
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.statusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(3, 554);
+            this.statusStrip.Location = new System.Drawing.Point(3, 665);
             this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(745, 26);
+            this.statusStrip.Size = new System.Drawing.Size(894, 31);
             this.statusStrip.TabIndex = 2;
             this.statusStrip.Text = "statusStrip1";
             // 
@@ -191,7 +191,7 @@
             // 
             this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Size = new System.Drawing.Size(62, 20);
+            this.statusLabel.Size = new System.Drawing.Size(62, 25);
             this.statusLabel.Text = "Ready";
             // 
             // tabControlOutput
@@ -200,10 +200,10 @@
             this.tabControlOutput.Controls.Add(this.tabExpert);
             this.tabControlOutput.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControlOutput.Font = new System.Drawing.Font("Segoe UI", 12F);
-            this.tabControlOutput.Location = new System.Drawing.Point(189, 3);
+            this.tabControlOutput.Location = new System.Drawing.Point(226, 3);
             this.tabControlOutput.Name = "tabControlOutput";
             this.tabControlOutput.SelectedIndex = 0;
-            this.tabControlOutput.Size = new System.Drawing.Size(553, 499);
+            this.tabControlOutput.Size = new System.Drawing.Size(665, 595);
             this.tabControlOutput.TabIndex = 3;
             this.tabControlOutput.TabStop = false;
             // 
@@ -213,7 +213,7 @@
             this.tabSimple.Location = new System.Drawing.Point(4, 37);
             this.tabSimple.Name = "tabSimple";
             this.tabSimple.Padding = new System.Windows.Forms.Padding(3);
-            this.tabSimple.Size = new System.Drawing.Size(545, 458);
+            this.tabSimple.Size = new System.Drawing.Size(657, 554);
             this.tabSimple.TabIndex = 0;
             this.tabSimple.Text = "Simple";
             this.tabSimple.UseVisualStyleBackColor = true;
@@ -224,7 +224,7 @@
             this.tabExpert.Location = new System.Drawing.Point(4, 37);
             this.tabExpert.Name = "tabExpert";
             this.tabExpert.Padding = new System.Windows.Forms.Padding(3);
-            this.tabExpert.Size = new System.Drawing.Size(607, 522);
+            this.tabExpert.Size = new System.Drawing.Size(545, 458);
             this.tabExpert.TabIndex = 1;
             this.tabExpert.Text = "Expert";
             this.tabExpert.UseVisualStyleBackColor = true;
@@ -237,7 +237,7 @@
             this.rtbLog.Location = new System.Drawing.Point(3, 3);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(601, 516);
+            this.rtbLog.Size = new System.Drawing.Size(539, 452);
             this.rtbLog.TabIndex = 0;
             this.rtbLog.TabStop = false;
             this.rtbLog.Text = "";
@@ -251,7 +251,7 @@
             this.tabControlActions.Location = new System.Drawing.Point(3, 3);
             this.tabControlActions.Name = "tabControlActions";
             this.tabControlActions.SelectedIndex = 0;
-            this.tabControlActions.Size = new System.Drawing.Size(174, 368);
+            this.tabControlActions.Size = new System.Drawing.Size(211, 440);
             this.tabControlActions.TabIndex = 4;
             this.tabControlActions.TabStop = false;
             // 
@@ -261,7 +261,7 @@
             this.mainButtonsTab.Location = new System.Drawing.Point(4, 34);
             this.mainButtonsTab.Name = "mainButtonsTab";
             this.mainButtonsTab.Padding = new System.Windows.Forms.Padding(3);
-            this.mainButtonsTab.Size = new System.Drawing.Size(166, 330);
+            this.mainButtonsTab.Size = new System.Drawing.Size(203, 402);
             this.mainButtonsTab.TabIndex = 0;
             this.mainButtonsTab.Text = "Main";
             this.mainButtonsTab.UseVisualStyleBackColor = true;
@@ -279,7 +279,7 @@
             this.mainButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.mainButtonsLayoutPanel.Name = "mainButtonsLayoutPanel";
-            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(160, 324);
+            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(197, 396);
             this.mainButtonsLayoutPanel.TabIndex = 9;
             this.mainButtonsLayoutPanel.WrapContents = false;
             // 
@@ -343,7 +343,7 @@
             this.taskKillBtnMain.Size = new System.Drawing.Size(140, 36);
             this.taskKillBtnMain.TabIndex = 13;
             this.taskKillBtnMain.TabStop = false;
-            this.taskKillBtnMain.Text = "Kill task";
+            this.taskKillBtnMain.Text = "Stop task";
             this.taskKillBtnMain.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.taskKillBtnMain.UseAccentColor = false;
             this.taskKillBtnMain.UseVisualStyleBackColor = true;
@@ -355,7 +355,7 @@
             this.extraButtonsTab.Location = new System.Drawing.Point(4, 34);
             this.extraButtonsTab.Name = "extraButtonsTab";
             this.extraButtonsTab.Padding = new System.Windows.Forms.Padding(3);
-            this.extraButtonsTab.Size = new System.Drawing.Size(186, 378);
+            this.extraButtonsTab.Size = new System.Drawing.Size(203, 402);
             this.extraButtonsTab.TabIndex = 1;
             this.extraButtonsTab.Text = "Extra";
             this.extraButtonsTab.UseVisualStyleBackColor = true;
@@ -375,7 +375,7 @@
             this.extraButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.extraButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.extraButtonsLayoutPanel.Name = "extraButtonsLayoutPanel";
-            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(180, 372);
+            this.extraButtonsLayoutPanel.Size = new System.Drawing.Size(197, 396);
             this.extraButtonsLayoutPanel.TabIndex = 0;
             this.extraButtonsLayoutPanel.WrapContents = false;
             // 
@@ -417,7 +417,7 @@
             this.taskKillBtnExtra.NoAccentTextColor = System.Drawing.Color.Empty;
             this.taskKillBtnExtra.Size = new System.Drawing.Size(314, 36);
             this.taskKillBtnExtra.TabIndex = 14;
-            this.taskKillBtnExtra.Text = "Kill task";
+            this.taskKillBtnExtra.Text = "Stop task";
             this.taskKillBtnExtra.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.taskKillBtnExtra.UseAccentColor = false;
             this.taskKillBtnExtra.UseVisualStyleBackColor = true;
@@ -555,7 +555,7 @@
             this.formTableLayoutPanel.Name = "formTableLayoutPanel";
             this.formTableLayoutPanel.RowCount = 1;
             this.formTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.formTableLayoutPanel.Size = new System.Drawing.Size(745, 505);
+            this.formTableLayoutPanel.Size = new System.Drawing.Size(894, 601);
             this.formTableLayoutPanel.TabIndex = 5;
             // 
             // ButtonsAndStatusesPanel
@@ -570,7 +570,7 @@
             this.ButtonsAndStatusesPanel.RowCount = 2;
             this.ButtonsAndStatusesPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 75F));
             this.ButtonsAndStatusesPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 25F));
-            this.ButtonsAndStatusesPanel.Size = new System.Drawing.Size(180, 499);
+            this.ButtonsAndStatusesPanel.Size = new System.Drawing.Size(217, 595);
             this.ButtonsAndStatusesPanel.TabIndex = 4;
             // 
             // ReportStatusLayoutPanel
@@ -581,9 +581,9 @@
             this.ReportStatusLayoutPanel.Controls.Add(this.FeishuStatusTable);
             this.ReportStatusLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ReportStatusLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
-            this.ReportStatusLayoutPanel.Location = new System.Drawing.Point(3, 377);
+            this.ReportStatusLayoutPanel.Location = new System.Drawing.Point(3, 449);
             this.ReportStatusLayoutPanel.Name = "ReportStatusLayoutPanel";
-            this.ReportStatusLayoutPanel.Size = new System.Drawing.Size(174, 119);
+            this.ReportStatusLayoutPanel.Size = new System.Drawing.Size(211, 143);
             this.ReportStatusLayoutPanel.TabIndex = 5;
             // 
             // ReportStatusLabel
@@ -593,7 +593,7 @@
             this.ReportStatusLabel.Location = new System.Drawing.Point(3, 5);
             this.ReportStatusLabel.Margin = new System.Windows.Forms.Padding(3, 5, 3, 5);
             this.ReportStatusLabel.Name = "ReportStatusLabel";
-            this.ReportStatusLabel.Size = new System.Drawing.Size(124, 46);
+            this.ReportStatusLabel.Size = new System.Drawing.Size(169, 23);
             this.ReportStatusLabel.TabIndex = 2;
             this.ReportStatusLabel.Text = "Report upload status";
             // 
@@ -604,7 +604,7 @@
             this.CalydonStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
             this.CalydonStatusTable.Controls.Add(this.CalydonStatusIcon, 0, 0);
             this.CalydonStatusTable.Controls.Add(this.CalydonStatusLabel, 1, 0);
-            this.CalydonStatusTable.Location = new System.Drawing.Point(3, 56);
+            this.CalydonStatusTable.Location = new System.Drawing.Point(3, 33);
             this.CalydonStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.CalydonStatusTable.Name = "CalydonStatusTable";
             this.CalydonStatusTable.RowCount = 1;
@@ -641,7 +641,7 @@
             this.NextcloudStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
             this.NextcloudStatusTable.Controls.Add(this.NextсloudStatusLabel, 1, 0);
             this.NextcloudStatusTable.Controls.Add(this.NextсloudStatusIcon, 0, 0);
-            this.NextcloudStatusTable.Location = new System.Drawing.Point(3, 83);
+            this.NextcloudStatusTable.Location = new System.Drawing.Point(3, 60);
             this.NextcloudStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.NextcloudStatusTable.Name = "NextcloudStatusTable";
             this.NextcloudStatusTable.RowCount = 1;
@@ -678,7 +678,7 @@
             this.FeishuStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
             this.FeishuStatusTable.Controls.Add(this.FeishuStatusIcon, 0, 0);
             this.FeishuStatusTable.Controls.Add(this.FeishuStatusLabel, 1, 0);
-            this.FeishuStatusTable.Location = new System.Drawing.Point(160, 0);
+            this.FeishuStatusTable.Location = new System.Drawing.Point(3, 87);
             this.FeishuStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.FeishuStatusTable.Name = "FeishuStatusTable";
             this.FeishuStatusTable.RowCount = 1;

@@ -131,6 +131,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\CheckMapping.cs" />
+    <Compile Include="Services\GitRunner.cs" />
+    <Compile Include="Services\Interfaces\IConsoleRenderer.cs" />
+    <Compile Include="Services\Interfaces\IGitRunner.cs" />
+    <Compile Include="Services\Interfaces\IReportStatusManager.cs" />
+    <Compile Include="Services\Interfaces\IResultsGridController.cs" />
     <Compile Include="UI\Controls\CustomMaterialButton.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -155,6 +160,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\ConsoleOutputHandler.cs" />
     <Compile Include="Services\ProcessExecutor.cs" />
+    <Compile Include="UI\Helpers\RichTextBoxConsoleRenderer.cs" />
     <Compile Include="UI\Helpers\ThemeManager.cs" />
     <Compile Include="Services\UpdateChecker.cs" />
     <EmbeddedResource Include="UI\Forms\JatlasTestRunnerForm.resx">

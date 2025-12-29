@@ -351,12 +351,22 @@
     "ufn": "Connecting Wi-Fi"
   },
   {
+    "pattern": "Switching to Wi-Fi QA_Main_2.4G",
+    "group": "Wi-Fi 2.4 GHz",
+    "ufn": "Connecting Wi-Fi"
+  },
+  {
     "pattern": "Wi-Fi 2GHz bitrate",
     "group": "Wi-Fi 2.4 GHz",
     "ufn": "Bitrate"
   },
   {
     "pattern": "Switching to Wi-Fi QA_5G",
+    "group": "Wi-Fi 5 GHz",
+    "ufn": "Connecting Wi-Fi"
+  },
+  {
+    "pattern": "Switching to Wi-Fi QA_Main_5G",
     "group": "Wi-Fi 5 GHz",
     "ufn": "Connecting Wi-Fi"
   },
@@ -408,5 +418,10 @@
     "pattern": "DiskSpd RND4K Q1T1 Write",
     "group": "Memory",
     "ufn": "Random write"
+  },
+  {
+    "pattern": "AIDA Stability test",
+    "group": "Stability test",
+    "ufn": "AIDA Stability test"
   }
 ]

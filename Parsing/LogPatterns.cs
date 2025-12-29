@@ -82,7 +82,24 @@ namespace ATT_Wrapper.Parsing
         public static readonly Regex DnsResolveError = new Regex(
             @"Failed to resolve '([^']+)'",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+
+        public static readonly Regex GitNetworkError = new Regex(
+    @"(?:kex_exchange_identification|ssh: connect to host|Connection closed by remote|The remote end hung up unexpectedly|Software caused connection abort)",
+    RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        public static readonly Regex GitFatalError = new Regex(
+            @"fatal:\s+(Could not read from remote repository|repository not found|Authentication failed|unable to access|The remote end hung up unexpectedly)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        public static readonly Regex GitLockError = new Regex(
+            @"Unable to create .*?\.git/index\.lock",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        public static readonly Regex GitHostKeyError = new Regex(
+            @"Host key verification failed",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+
         }
-
-
     }

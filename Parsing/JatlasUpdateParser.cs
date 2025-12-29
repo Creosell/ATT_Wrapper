@@ -3,10 +3,53 @@ using System.Collections.Generic;
 
 namespace ATT_Wrapper.Parsing
     {
+    /// <summary>
+    /// Парсер логов обновления (git pull / update.bat).
+    /// Обрабатывает ошибки Git (сеть, блокировки, доступ) и статусы процесса обновления.
+    /// </summary>
     public class JatlasUpdateParser : ILogParser
         {
+        /// <summary>
+        /// Анализирует строку лога обновления.
+        /// </summary>
+        /// <param name="line">Строка лога.</param>
+        /// <param name="statusFromLine">Статус из цвета строки (не используется в апдейте).</param>
+        /// <returns>Результаты разбора (PASS/FAIL/Progress).</returns>
         public IEnumerable<LogResult> Parse(string line, string statusFromLine = null)
             {
+            // --- 1. Проверка специфичных ошибок Git (через LogPatterns) ---
+
+            // Критические ошибки сети/SSH
+            if (LogPatterns.GitNetworkError.IsMatch(line))
+                {
+                yield return LogResult.Fail($"Git Network Error: {line.Trim()}", "Update");
+                yield break;
+                }
+
+            // Фатальные ошибки доступа/репозитория
+            var fatalMatch = LogPatterns.GitFatalError.Match(line);
+            if (fatalMatch.Success)
+                {
+                yield return LogResult.Fail($"Git Fatal: {fatalMatch.Groups[1].Value}", "Update");
+                yield break;
+                }
+
+            // Ошибки блокировки (index.lock)
+            if (LogPatterns.GitLockError.IsMatch(line))
+                {
+                yield return LogResult.Fail("Git Lock Error: Another git process is running", "Update");
+                yield break;
+                }
+
+            // Ошибки ключей хоста
+            if (LogPatterns.GitHostKeyError.IsMatch(line))
+                {
+                yield return LogResult.Fail("Git Auth: Host key verification failed", "Update");
+                yield break;
+                }
+
+            // --- 2. Стандартная логика (Process Flow) ---
+
             if (line.Contains("No internet"))
                 {
                 yield return LogResult.Progress("Waiting for internet...");
