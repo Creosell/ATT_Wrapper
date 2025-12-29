@@ -29,6 +29,27 @@ namespace ATT_Wrapper
         private ToolStripLoadingSpinner _loadingSpinner;
         private Action _onTaskFinished;
         private ReportStatusManager _reportStatusManager;
+        private bool _isTaskRunning = false;
+
+        /// <summary>
+        /// Управляет состоянием выполнения задачи. 
+        /// При изменении автоматически блокирует или разблокирует интерфейс.
+        /// </summary>
+        private bool IsTaskRunning
+            {
+            get => _isTaskRunning;
+            set
+                {
+                _isTaskRunning = value;
+                // Автоматически переключаем кнопки в UI потоке
+                // !value значит: если задача бежит (true), кнопки выключены (false)
+                this.BeginInvoke((Action)( () => ToggleButtons(!value) ));
+                if (_isTaskRunning == false)
+                    {
+                    SetStatus("Ready");
+                    } 
+                }
+            }
 
         public JatlasTestRunnerForm()
             {
@@ -124,8 +145,6 @@ namespace ATT_Wrapper
                 TextShade.WHITE
             );
 
-            _reportStatusManager = new ReportStatusManager();
-
             // Инициализация менеджера
             _reportStatusManager = new ReportStatusManager();
 
@@ -183,20 +202,30 @@ namespace ATT_Wrapper
 
         private async Task CheckUpdateStatusAsync()
             {
+            if (IsTaskRunning) return;
+
             try
                 {
+                IsTaskRunning = true;
+
                 // Создаем экземпляр нашего нового сервиса
                 var checker = new UpdateChecker();
 
                 SetStatus("Checking updates...");
 
-                bool isUpdateAvailable = await checker.IsUpdateAvailable();
 
-                if (isUpdateAvailable)
+                LogResult checkResult = await checker.IsUpdateAvailable();
+
+                if (checkResult.Level == LogLevel.Pass && checkResult.Message.Equals("Updates found"))
                     {
                     // Если есть обновление - выделяем кнопку
-                    btnUpdate.Text = "UPDATE AVAILABLE";
+                    btnUpdate.Text = "Update available";
                     btnUpdate.UseAccentColor = true; 
+                    }
+                else if (checkResult.Level == LogLevel.Fail)
+                    {
+                    btnUpdate.Text = "Update check fail";
+                    btnUpdate.UseAccentColor = true;
                     }
                 else
                     {
@@ -204,14 +233,15 @@ namespace ATT_Wrapper
                     btnUpdate.Text = "Update";
                     btnUpdate.UseAccentColor = false;
                     }
-                SetStatus("Ready");
                 }
             catch (Exception ex)
                 {
                 // Если что-то пошло не так (нет интернета и т.д.), просто логируем и оставляем всё как есть
                 Console.WriteLine($"Update check failed: {ex.Message}");
-                btnUpdate.Text = "Update failed";
-                SetStatus("Ready");
+                }
+            finally
+                {
+                    IsTaskRunning = false;
                 }
             }
 
@@ -223,7 +253,6 @@ namespace ATT_Wrapper
                     {
                     statusLabel.Text = status;
                     }
-                ToggleButtons(true);
             } ));
             }
 
@@ -231,8 +260,8 @@ namespace ATT_Wrapper
 
         private void RunTest(ILogParser parser, string script, string args, Action onFinished = null)
             {
+            IsTaskRunning = true;
             _onTaskFinished = onFinished;
-            ToggleButtons(false);
             _gridController.Clear();
             rtbLog.Clear();
             _reportStatusManager?.ResetAll();
@@ -249,11 +278,7 @@ namespace ATT_Wrapper
                 parser,
                 _gridController,
                 _reportStatusManager,
-                (status) => this.BeginInvoke((Action)( () =>
-                {
-                    if (statusLabel != null)
-                        statusLabel.Text = status;
-                } )),
+                SetStatus,
                 () =>
                 {
                     Log.Information("Auto-enter callback triggered, sending Enter key");
@@ -305,12 +330,7 @@ namespace ATT_Wrapper
                 {
                 Log.Error(ex, "Start failed");
                 MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                ToggleButtons(true);
-                this.BeginInvoke((Action)( () =>
-                {
-                    if (statusLabel != null) statusLabel.Text = "Ready";
-                    ToggleButtons(true);
-                } ));
+                IsTaskRunning = false;
                 }
             }
 
@@ -354,8 +374,8 @@ namespace ATT_Wrapper
 
             this.BeginInvoke((Action)( () =>
             {
-                if (statusLabel != null) statusLabel.Text = "Ready";
-                ToggleButtons(true);
+                IsTaskRunning = false;
+
                 if (_onTaskFinished != null)
                     {
                     _onTaskFinished.Invoke();
@@ -401,14 +421,7 @@ namespace ATT_Wrapper
 
             _executor?.Kill();
 
-            this.BeginInvoke((Action)( () =>
-            {
-                if (statusLabel != null)
-                    {
-                    statusLabel.Text = "Ready";
-                    }
-                ToggleButtons(true);
-            } ));
+            IsTaskRunning = false;
             }
 
         private void ToggleButtons(bool enabled)

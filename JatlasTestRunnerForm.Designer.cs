@@ -59,12 +59,12 @@
             this.ButtonsAndStatusesPanel = new System.Windows.Forms.TableLayoutPanel();
             this.ReportStatusLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.ReportStatusLabel = new System.Windows.Forms.Label();
-            this.NextcloudStatusTable = new System.Windows.Forms.TableLayoutPanel();
-            this.NextсloudStatusLabel = new System.Windows.Forms.Label();
-            this.NextсloudStatusIcon = new System.Windows.Forms.PictureBox();
             this.CalydonStatusTable = new System.Windows.Forms.TableLayoutPanel();
             this.CalydonStatusIcon = new System.Windows.Forms.PictureBox();
             this.CalydonStatusLabel = new System.Windows.Forms.Label();
+            this.NextcloudStatusTable = new System.Windows.Forms.TableLayoutPanel();
+            this.NextсloudStatusLabel = new System.Windows.Forms.Label();
+            this.NextсloudStatusIcon = new System.Windows.Forms.PictureBox();
             this.FeishuStatusTable = new System.Windows.Forms.TableLayoutPanel();
             this.FeishuStatusIcon = new System.Windows.Forms.PictureBox();
             this.FeishuStatusLabel = new System.Windows.Forms.Label();
@@ -81,10 +81,10 @@
             this.formTableLayoutPanel.SuspendLayout();
             this.ButtonsAndStatusesPanel.SuspendLayout();
             this.ReportStatusLayoutPanel.SuspendLayout();
-            this.NextcloudStatusTable.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.NextсloudStatusIcon)).BeginInit();
             this.CalydonStatusTable.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.CalydonStatusIcon)).BeginInit();
+            this.NextcloudStatusTable.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.NextсloudStatusIcon)).BeginInit();
             this.FeishuStatusTable.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.FeishuStatusIcon)).BeginInit();
             this.SuspendLayout();
@@ -171,7 +171,7 @@
             this.dgvResults.RowHeadersWidth = 51;
             this.dgvResults.RowTemplate.Height = 12;
             this.dgvResults.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvResults.Size = new System.Drawing.Size(601, 516);
+            this.dgvResults.Size = new System.Drawing.Size(539, 452);
             this.dgvResults.TabIndex = 1;
             this.dgvResults.TabStop = false;
             // 
@@ -181,9 +181,9 @@
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.statusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(3, 633);
+            this.statusStrip.Location = new System.Drawing.Point(3, 554);
             this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(827, 31);
+            this.statusStrip.Size = new System.Drawing.Size(745, 26);
             this.statusStrip.TabIndex = 2;
             this.statusStrip.Text = "statusStrip1";
             // 
@@ -191,7 +191,7 @@
             // 
             this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Size = new System.Drawing.Size(62, 25);
+            this.statusLabel.Size = new System.Drawing.Size(62, 20);
             this.statusLabel.Text = "Ready";
             // 
             // tabControlOutput
@@ -200,10 +200,10 @@
             this.tabControlOutput.Controls.Add(this.tabExpert);
             this.tabControlOutput.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControlOutput.Font = new System.Drawing.Font("Segoe UI", 12F);
-            this.tabControlOutput.Location = new System.Drawing.Point(209, 3);
+            this.tabControlOutput.Location = new System.Drawing.Point(189, 3);
             this.tabControlOutput.Name = "tabControlOutput";
             this.tabControlOutput.SelectedIndex = 0;
-            this.tabControlOutput.Size = new System.Drawing.Size(615, 563);
+            this.tabControlOutput.Size = new System.Drawing.Size(553, 499);
             this.tabControlOutput.TabIndex = 3;
             this.tabControlOutput.TabStop = false;
             // 
@@ -213,7 +213,7 @@
             this.tabSimple.Location = new System.Drawing.Point(4, 37);
             this.tabSimple.Name = "tabSimple";
             this.tabSimple.Padding = new System.Windows.Forms.Padding(3);
-            this.tabSimple.Size = new System.Drawing.Size(607, 522);
+            this.tabSimple.Size = new System.Drawing.Size(545, 458);
             this.tabSimple.TabIndex = 0;
             this.tabSimple.Text = "Simple";
             this.tabSimple.UseVisualStyleBackColor = true;
@@ -251,7 +251,7 @@
             this.tabControlActions.Location = new System.Drawing.Point(3, 3);
             this.tabControlActions.Name = "tabControlActions";
             this.tabControlActions.SelectedIndex = 0;
-            this.tabControlActions.Size = new System.Drawing.Size(194, 416);
+            this.tabControlActions.Size = new System.Drawing.Size(174, 368);
             this.tabControlActions.TabIndex = 4;
             this.tabControlActions.TabStop = false;
             // 
@@ -261,7 +261,7 @@
             this.mainButtonsTab.Location = new System.Drawing.Point(4, 34);
             this.mainButtonsTab.Name = "mainButtonsTab";
             this.mainButtonsTab.Padding = new System.Windows.Forms.Padding(3);
-            this.mainButtonsTab.Size = new System.Drawing.Size(186, 378);
+            this.mainButtonsTab.Size = new System.Drawing.Size(166, 330);
             this.mainButtonsTab.TabIndex = 0;
             this.mainButtonsTab.Text = "Main";
             this.mainButtonsTab.UseVisualStyleBackColor = true;
@@ -279,7 +279,7 @@
             this.mainButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.mainButtonsLayoutPanel.Name = "mainButtonsLayoutPanel";
-            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(180, 372);
+            this.mainButtonsLayoutPanel.Size = new System.Drawing.Size(160, 324);
             this.mainButtonsLayoutPanel.TabIndex = 9;
             this.mainButtonsLayoutPanel.WrapContents = false;
             // 
@@ -555,7 +555,7 @@
             this.formTableLayoutPanel.Name = "formTableLayoutPanel";
             this.formTableLayoutPanel.RowCount = 1;
             this.formTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.formTableLayoutPanel.Size = new System.Drawing.Size(827, 569);
+            this.formTableLayoutPanel.Size = new System.Drawing.Size(745, 505);
             this.formTableLayoutPanel.TabIndex = 5;
             // 
             // ButtonsAndStatusesPanel
@@ -570,7 +570,7 @@
             this.ButtonsAndStatusesPanel.RowCount = 2;
             this.ButtonsAndStatusesPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 75F));
             this.ButtonsAndStatusesPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 25F));
-            this.ButtonsAndStatusesPanel.Size = new System.Drawing.Size(200, 563);
+            this.ButtonsAndStatusesPanel.Size = new System.Drawing.Size(180, 499);
             this.ButtonsAndStatusesPanel.TabIndex = 4;
             // 
             // ReportStatusLayoutPanel
@@ -581,9 +581,9 @@
             this.ReportStatusLayoutPanel.Controls.Add(this.FeishuStatusTable);
             this.ReportStatusLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ReportStatusLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
-            this.ReportStatusLayoutPanel.Location = new System.Drawing.Point(3, 425);
+            this.ReportStatusLayoutPanel.Location = new System.Drawing.Point(3, 377);
             this.ReportStatusLayoutPanel.Name = "ReportStatusLayoutPanel";
-            this.ReportStatusLayoutPanel.Size = new System.Drawing.Size(194, 135);
+            this.ReportStatusLayoutPanel.Size = new System.Drawing.Size(174, 119);
             this.ReportStatusLayoutPanel.TabIndex = 5;
             // 
             // ReportStatusLabel
@@ -593,46 +593,9 @@
             this.ReportStatusLabel.Location = new System.Drawing.Point(3, 5);
             this.ReportStatusLabel.Margin = new System.Windows.Forms.Padding(3, 5, 3, 5);
             this.ReportStatusLabel.Name = "ReportStatusLabel";
-            this.ReportStatusLabel.Size = new System.Drawing.Size(169, 23);
+            this.ReportStatusLabel.Size = new System.Drawing.Size(124, 46);
             this.ReportStatusLabel.TabIndex = 2;
             this.ReportStatusLabel.Text = "Report upload status";
-            // 
-            // NextcloudStatusTable
-            // 
-            this.NextcloudStatusTable.ColumnCount = 2;
-            this.NextcloudStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
-            this.NextcloudStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
-            this.NextcloudStatusTable.Controls.Add(this.NextсloudStatusLabel, 1, 0);
-            this.NextcloudStatusTable.Controls.Add(this.NextсloudStatusIcon, 0, 0);
-            this.NextcloudStatusTable.Location = new System.Drawing.Point(3, 60);
-            this.NextcloudStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
-            this.NextcloudStatusTable.Name = "NextcloudStatusTable";
-            this.NextcloudStatusTable.RowCount = 1;
-            this.NextcloudStatusTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.NextcloudStatusTable.Size = new System.Drawing.Size(151, 27);
-            this.NextcloudStatusTable.TabIndex = 0;
-            // 
-            // NextсloudStatusLabel
-            // 
-            this.NextсloudStatusLabel.AutoSize = true;
-            this.NextсloudStatusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.NextсloudStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.NextсloudStatusLabel.Location = new System.Drawing.Point(30, 1);
-            this.NextсloudStatusLabel.Margin = new System.Windows.Forms.Padding(0, 1, 3, 0);
-            this.NextсloudStatusLabel.Name = "NextсloudStatusLabel";
-            this.NextсloudStatusLabel.Size = new System.Drawing.Size(118, 26);
-            this.NextсloudStatusLabel.TabIndex = 0;
-            this.NextсloudStatusLabel.Text = "Nextcloud";
-            this.NextсloudStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
-            // NextсloudStatusIcon
-            // 
-            this.NextсloudStatusIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.NextсloudStatusIcon.Location = new System.Drawing.Point(3, 3);
-            this.NextсloudStatusIcon.Name = "NextсloudStatusIcon";
-            this.NextсloudStatusIcon.Size = new System.Drawing.Size(24, 21);
-            this.NextсloudStatusIcon.TabIndex = 1;
-            this.NextсloudStatusIcon.TabStop = false;
             // 
             // CalydonStatusTable
             // 
@@ -641,7 +604,7 @@
             this.CalydonStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
             this.CalydonStatusTable.Controls.Add(this.CalydonStatusIcon, 0, 0);
             this.CalydonStatusTable.Controls.Add(this.CalydonStatusLabel, 1, 0);
-            this.CalydonStatusTable.Location = new System.Drawing.Point(3, 33);
+            this.CalydonStatusTable.Location = new System.Drawing.Point(3, 56);
             this.CalydonStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.CalydonStatusTable.Name = "CalydonStatusTable";
             this.CalydonStatusTable.RowCount = 1;
@@ -671,6 +634,43 @@
             this.CalydonStatusLabel.Text = "Calydon";
             this.CalydonStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
+            // NextcloudStatusTable
+            // 
+            this.NextcloudStatusTable.ColumnCount = 2;
+            this.NextcloudStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
+            this.NextcloudStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
+            this.NextcloudStatusTable.Controls.Add(this.NextсloudStatusLabel, 1, 0);
+            this.NextcloudStatusTable.Controls.Add(this.NextсloudStatusIcon, 0, 0);
+            this.NextcloudStatusTable.Location = new System.Drawing.Point(3, 83);
+            this.NextcloudStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
+            this.NextcloudStatusTable.Name = "NextcloudStatusTable";
+            this.NextcloudStatusTable.RowCount = 1;
+            this.NextcloudStatusTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.NextcloudStatusTable.Size = new System.Drawing.Size(151, 27);
+            this.NextcloudStatusTable.TabIndex = 0;
+            // 
+            // NextсloudStatusLabel
+            // 
+            this.NextсloudStatusLabel.AutoSize = true;
+            this.NextсloudStatusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.NextсloudStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.NextсloudStatusLabel.Location = new System.Drawing.Point(30, 1);
+            this.NextсloudStatusLabel.Margin = new System.Windows.Forms.Padding(0, 1, 3, 0);
+            this.NextсloudStatusLabel.Name = "NextсloudStatusLabel";
+            this.NextсloudStatusLabel.Size = new System.Drawing.Size(118, 26);
+            this.NextсloudStatusLabel.TabIndex = 0;
+            this.NextсloudStatusLabel.Text = "Nextcloud";
+            this.NextсloudStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // NextсloudStatusIcon
+            // 
+            this.NextсloudStatusIcon.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.NextсloudStatusIcon.Location = new System.Drawing.Point(3, 3);
+            this.NextсloudStatusIcon.Name = "NextсloudStatusIcon";
+            this.NextсloudStatusIcon.Size = new System.Drawing.Size(24, 21);
+            this.NextсloudStatusIcon.TabIndex = 1;
+            this.NextсloudStatusIcon.TabStop = false;
+            // 
             // FeishuStatusTable
             // 
             this.FeishuStatusTable.ColumnCount = 2;
@@ -678,7 +678,7 @@
             this.FeishuStatusTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
             this.FeishuStatusTable.Controls.Add(this.FeishuStatusIcon, 0, 0);
             this.FeishuStatusTable.Controls.Add(this.FeishuStatusLabel, 1, 0);
-            this.FeishuStatusTable.Location = new System.Drawing.Point(3, 87);
+            this.FeishuStatusTable.Location = new System.Drawing.Point(160, 0);
             this.FeishuStatusTable.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.FeishuStatusTable.Name = "FeishuStatusTable";
             this.FeishuStatusTable.RowCount = 1;
@@ -711,7 +711,7 @@
             // JatlasTestRunnerForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(833, 667);
+            this.ClientSize = new System.Drawing.Size(900, 699);
             this.Controls.Add(this.formTableLayoutPanel);
             this.Controls.Add(this.statusStrip);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -736,12 +736,12 @@
             this.ButtonsAndStatusesPanel.ResumeLayout(false);
             this.ReportStatusLayoutPanel.ResumeLayout(false);
             this.ReportStatusLayoutPanel.PerformLayout();
-            this.NextcloudStatusTable.ResumeLayout(false);
-            this.NextcloudStatusTable.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.NextсloudStatusIcon)).EndInit();
             this.CalydonStatusTable.ResumeLayout(false);
             this.CalydonStatusTable.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.CalydonStatusIcon)).EndInit();
+            this.NextcloudStatusTable.ResumeLayout(false);
+            this.NextcloudStatusTable.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.NextсloudStatusIcon)).EndInit();
             this.FeishuStatusTable.ResumeLayout(false);
             this.FeishuStatusTable.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.FeishuStatusIcon)).EndInit();
