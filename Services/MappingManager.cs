@@ -3,23 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ATT_Wrapper.Models;
 
 namespace ATT_Wrapper
     {
-    /// <summary>
-    /// Модель данных для сопоставления строки лога с группой и именем проверки.
-    /// </summary>
-    public class CheckMapping
-        {
-        [JsonProperty("pattern")]
-        public string Pattern { get; set; }
 
-        [JsonProperty("group")]
-        public string Group { get; set; }
-
-        [JsonProperty("ufn")]
-        public string Ufn { get; set; }
-        }
 
     /// <summary>
     /// Управляет загрузкой конфигурации маппинга и поиском соответствий в логах.
