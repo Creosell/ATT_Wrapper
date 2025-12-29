@@ -42,13 +42,8 @@ namespace ATT_Wrapper.Components
                 }
             }
 
-        public void UpdateStatus(string groupKey, string status)
+        public void UpdateStatus(string uploaderName, string status)
             {
-            // Ключ приходит в формате "uploader:nextcloud"
-            if (string.IsNullOrEmpty(groupKey) || !groupKey.StartsWith("uploader:")) return;
-
-            string uploaderName = groupKey.Substring("uploader:".Length);
-
             if (_items.TryGetValue(uploaderName, out var item))
                 {
                 Color targetColor = status == "PASS" ? _colorSuccess : _colorFail;

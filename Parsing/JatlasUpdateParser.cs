@@ -1,73 +1,65 @@
 ﻿using ATT_Wrapper.Components;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ATT_Wrapper.Parsing
     {
     public class JatlasUpdateParser : ILogParser
         {
-        public bool ParseLine(string line, string statusFromLine,
-                             Action<string, string, string> onResult,
-                             Action<string> onProgress)
+        public IEnumerable<LogResult> Parse(string line, string statusFromLine = null)
             {
             if (line.Contains("No internet"))
                 {
-                onProgress?.Invoke("Waiting for internet...");
-                return false;
+                yield return LogResult.Progress("Waiting for internet...");
+                yield break;
                 }
 
             if (line.Contains("Internet connection detected"))
                 {
-                onResult?.Invoke("PASS", "Internet connected", null);
-                return true;
+                yield return LogResult.Pass("Internet connected");
+                yield break;
                 }
 
             if (line.Contains("Resetting branch"))
                 {
-                onProgress?.Invoke("Git: Pulling...");
-                return false;
+                yield return LogResult.Progress("Git: Pulling...");
+                yield break;
                 }
 
             if (line.Contains("Successfully pulled"))
                 {
-                onResult?.Invoke("PASS", "Repository updated", null);
-                return true;
+                yield return LogResult.Pass("Repository updated");
+                yield break;
                 }
 
             if (line.Contains("Failed to pull"))
                 {
-                onResult?.Invoke("FAIL", "Git: Pull failed", null);
-                return true;
+                yield return LogResult.Fail("Git: Pull failed");
+                yield break;
                 }
 
             if (line.Contains("Already up to date"))
                 {
-                onResult?.Invoke("PASS", "Repository has no updates", null);
-                return true;
+                yield return LogResult.Pass("Repository has no updates");
+                yield break;
                 }
 
             if (line.Contains("Installing dependencies"))
                 {
-                onProgress?.Invoke("Installing dependencies...");
-                return false;
+                yield return LogResult.Progress("Installing dependencies...");
+                yield break;
                 }
 
             if (line.Contains("Installing the current project"))
                 {
-                onResult?.Invoke("PASS", "Dependencies installed", null);
-                return true;
+                yield return LogResult.Pass("Dependencies installed");
+                yield break;
                 }
 
             if (line.Contains("Update finished"))
                 {
-                onResult?.Invoke("PASS", "Update finished", null);
-                return true;
+                yield return LogResult.Pass("Update finished");
+                yield break;
                 }
-
-            return false;
             }
         }
     }

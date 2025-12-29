@@ -1,14 +1,17 @@
 ﻿using ATT_Wrapper.Components;
+using Serilog;
 using System;
 using System.Collections.Generic;
 
 namespace ATT_Wrapper.Parsing
     {
+    /// <summary>
+    /// Парсер логов выполнения тестов Jatlas.
+    /// Обрабатывает результаты тестов, состояние загрузчиков (Uploaders),
+    /// сетевые ошибки и прогресс выполнения задач.
+    /// </summary>
     public class JatlasTestParser : ILogParser
         {
-        private const int MaxRenderErrors = 100;
-        private readonly List<string> _renderErrors = new List<string>();
-        private readonly Action<int, string> _updateRowCallback;
         private ParserState _state = ParserState.Standard;
         private bool _nextCloudHasFailed = false;
 
@@ -18,117 +21,135 @@ namespace ATT_Wrapper.Parsing
             AwaitingNextCloudContinuation
             }
 
-        public JatlasTestParser(Action<int, string> updateRowCallback = null)
+        /// <summary>
+        /// Инициализирует новый экземпляр парсера.
+        /// </summary>
+        public JatlasTestParser()
             {
-            _updateRowCallback = updateRowCallback;
             }
 
-        public bool ParseLine(string line, string statusFromLine,
-                             Action<string, string, string> onResult,
-                             Action<string> onProgress)
+        /// <summary>
+        /// Анализирует строку лога и возвращает поток найденных событий.
+        /// </summary>
+        /// <param name="line">Строка лога.</param>
+        /// <param name="statusFromLine">Статус, извлеченный из цвета строки (если есть).</param>
+        /// <returns>Перечисление результатов разбора.</returns>
+        public IEnumerable<LogResult> Parse(string line, string statusFromLine = null)
             {
-            // State machine handling
             if (_state == ParserState.AwaitingNextCloudContinuation)
                 {
-                if (TryHandleNextCloudContinuation(line, onProgress))
-                    return true;
+                var continuation = HandleNextCloudContinuation(line);
+                if (continuation != null)
+                    {
+                    yield return continuation;
+                    yield break;
+                    }
                 }
 
-            // Try handlers in priority order
-            if (CheckAndFlushRenderErrors(line, onResult)) return false;
-            if (TryHandleRenderErrors(line)) return true;
-            if (TryHandleTaskProgress(line, onProgress)) return false;
-            if (TryHandleReport(line, onResult, onProgress)) return true;
-            if (TryHandleStandardResult(line, onResult)) return true;
-            if (TryHandleUploaders(line, statusFromLine, onResult)) return true;
-            if (TryHandleNetworkErrors(line, onResult)) return true;
+            var progress = ParseTaskProgress(line);
+            if (progress != null)
+                {
+                yield return progress;
+                }
 
-            return false;
+            var reports = ParseReport(line);
+            if (reports != null)
+                {
+                foreach (var r in reports) yield return r;
+                yield break;
+                }
+
+            var standard = ParseStandardResult(line);
+            if (standard != null)
+                {
+                yield return standard;
+                yield break;
+                }
+
+            var uploader = ParseUploader(line, statusFromLine);
+            if (uploader != null)
+                {
+                yield return uploader;
+                yield break;
+                }
+
+            var netError = ParseNetworkError(line);
+            if (netError != null)
+                {
+                yield return netError;
+                yield break;
+                }
             }
 
-        // --- NEW HANDLER ---
-        private bool TryHandleNetworkErrors(string line, Action<string, string, string> onResult)
+        /// <summary>
+        /// Обрабатывает ошибки сети, DNS и специфические ошибки загрузчиков.
+        /// </summary>
+        private LogResult ParseNetworkError(string line)
             {
-            // 1. Проверяем явные логи загрузчиков (WARNING или ERROR)
             var issueMatch = LogPatterns.UploaderIssue.Match(line);
             if (issueMatch.Success)
                 {
-                string uploaderName = issueMatch.Groups[1].Value.ToLower(); // "nextcloud"
+                string uploaderName = issueMatch.Groups[1].Value.ToLower();
                 string errorMsg = issueMatch.Groups[2].Value;
 
                 if (IsKnownUploader(uploaderName))
                     {
                     if (uploaderName.Contains("feishu")) uploaderName = "feishubot";
-                    SendFail(uploaderName, $"SysErr: {errorMsg}", onResult);
-                    return true;
+
+                    Log.Warning($"Detected uploader issue: {uploaderName} - {errorMsg}");
+                    return HandleFailLogic(uploaderName, $"SysErr: {errorMsg}");
                     }
                 }
 
-            // 2. Ищем хост в ошибках ConnectionPool (host='...')
             var connMatch = LogPatterns.ConnectionHostError.Match(line);
             if (connMatch.Success)
                 {
-                string host = connMatch.Groups[1].Value;
-                return HandleHostError(host, onResult);
+                return HandleHostError(connMatch.Groups[1].Value);
                 }
 
-            // 3. Ищем хост в ошибках DNS (Failed to resolve '...')
             var dnsMatch = LogPatterns.DnsResolveError.Match(line);
             if (dnsMatch.Success)
                 {
-                string host = dnsMatch.Groups[1].Value;
-                return HandleHostError(host, onResult);
+                return HandleHostError(dnsMatch.Groups[1].Value);
                 }
-
-            return false;
-            }
-
-        private bool HandleHostError(string host, Action<string, string, string> onResult)
-            {
-            string uploaderName = MapHostToUploader(host);
-            if (uploaderName != null)
-                {
-                SendFail(uploaderName, $"Connection failed to {host}", onResult);
-                return true;
-                }
-            return false;
-            }
-
-        private bool IsKnownUploader(string name)
-            {
-            if (string.IsNullOrEmpty(name)) return false;
-            name = name.ToLower();
-            return name.Contains("nextcloud") || name.Contains("feishu") || name.Contains("webhook");
-            }
-
-        private string MapHostToUploader(string host)
-            {
-            if (string.IsNullOrEmpty(host)) return null;
-            host = host.ToLower();
-
-            if (host.Contains("feishu.cn") || host.Contains("larksuite")) return "feishubot";
-            if (host.Contains("calydonqc.com")) return "webhook";
-            if (host.Contains("nextcloud")) return "nextcloud";
 
             return null;
             }
 
-        private void SendFail(string uploaderName, string message, Action<string, string, string> onResult)
+        /// <summary>
+        /// Формирует ошибку на основе хоста, к которому не удалось подключиться.
+        /// </summary>
+        private LogResult HandleHostError(string host)
+            {
+            string uploaderName = MapHostToUploader(host);
+            if (uploaderName != null)
+                {
+                Log.Warning($"Detected host error for: {host} -> {uploaderName}");
+                return HandleFailLogic(uploaderName, $"Connection failed to {host}");
+                }
+            return null;
+            }
+
+        /// <summary>
+        /// Генерирует результат FAIL для указанного загрузчика и обновляет внутреннее состояние.
+        /// </summary>
+        private LogResult HandleFailLogic(string uploaderName, string message)
             {
             if (uploaderName.IndexOf("nextcloud", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                 _nextCloudHasFailed = true;
                 _state = ParserState.Standard;
                 }
-
-            string mappingKey = $"uploader:{uploaderName.ToLower()}";
-            onResult?.Invoke("FAIL", message, mappingKey);
+            return LogResult.Fail(message, $"uploader:{uploaderName.ToLower()}");
             }
 
-        private bool TryHandleUploaders(string line, string statusFromLine, Action<string, string, string> onResult)
+        /// <summary>
+        /// Парсит строки, связанные с работой Uploader-ов (NextCloud, Feishu и т.д.).
+        /// </summary>
+        private LogResult ParseUploader(string line, string statusFromLine)
             {
             var match = LogPatterns.Uploader.Match(line);
-            if (!match.Success) return false;
+            if (!match.Success) return null;
 
             var name = match.Groups[1].Value;
             var rawMsg = match.Groups[2].Value;
@@ -146,7 +167,6 @@ namespace ATT_Wrapper.Parsing
                     }
                 else
                     {
-                    // Если NextCloud уже падал, принудительно ставим FAIL даже при успехе (например html.zip)
                     if (_nextCloudHasFailed)
                         {
                         status = "FAIL";
@@ -160,92 +180,125 @@ namespace ATT_Wrapper.Parsing
                     }
                 }
 
-            string mappingKey = "uploader:" + name.ToLower();
-            onResult?.Invoke(status, rawMsg, mappingKey);
-            return true;
+            Log.Information($"Uploader parsed: {name} [{status}]");
+            var level = MapStatusToLevel(status);
+            return new LogResult(level, rawMsg, "uploader:" + name.ToLower());
             }
 
-
-        // --- Existing Internal Handlers (CheckAndFlushRenderErrors, etc.) ---
-        // (Остальной код методов оставляешь без изменений, как в твоем файле)
-
-        private bool CheckAndFlushRenderErrors(string line, Action<string, string, string> onResult)
-            {
-            if (!line.Contains("Summary: Time:") || _renderErrors.Count == 0) return false;
-            foreach (var err in _renderErrors) onResult?.Invoke("ERROR", "Render: " + err, "Reports");
-            _renderErrors.Clear();
-            return false;
-            }
-
-        private bool TryHandleRenderErrors(string line)
-            {
-            var match = LogPatterns.RenderException.Match(line);
-            if (!match.Success) return false;
-            if (_renderErrors.Count >= MaxRenderErrors) return true;
-
-            var errorDetails = match.Groups[1].Value.Replace("(", ": ").Replace("))", "");
-            var templateCode = match.Groups[2].Value.Trim();
-            _renderErrors.Add(string.Format("{0} | TPL: {1}", errorDetails, templateCode));
-            return true;
-            }
-
-        private bool TryHandleTaskProgress(string line, Action<string> onProgress)
+        /// <summary>
+        /// Извлекает информацию о прогрессе выполнения текущей задачи или теста сети.
+        /// </summary>
+        private LogResult ParseTaskProgress(string line)
             {
             var netMatch = LogPatterns.NetworkTest.Match(line);
             if (netMatch.Success)
                 {
                 var prefix = netMatch.Groups[1].Value.StartsWith("Switch") ? "Switching to" : "Bitrate Test";
-                onProgress?.Invoke(string.Format("Running: {0}: {1} [{2}]", prefix, netMatch.Groups[2].Value.Trim(), netMatch.Groups[3].Value));
-                return true;
+                return LogResult.Progress($"{prefix}: {netMatch.Groups[2].Value.Trim()} [{netMatch.Groups[3].Value}]");
                 }
+
             var taskMatch = LogPatterns.RunningTask.Match(line);
             if (taskMatch.Success)
                 {
-                onProgress?.Invoke(string.Format("Running: {0} [{1}]", taskMatch.Groups[1].Value.Trim(), taskMatch.Groups[2].Value));
-                return true;
+                return LogResult.Progress($"Running: {taskMatch.Groups[1].Value.Trim()} [{taskMatch.Groups[2].Value}]");
                 }
-            return false;
+            return null;
             }
 
-        private bool TryHandleReport(string line, Action<string, string, string> onResult, Action<string> onProgress)
+        /// <summary>
+        /// Определяет момент создания отчета (Report created).
+        /// </summary>
+        private IEnumerable<LogResult> ParseReport(string line)
             {
             var match = LogPatterns.Report.Match(line);
-            if (!match.Success) return false;
-            onResult?.Invoke("PASS", string.Format("{0} report created", match.Groups[1].Value), "base report");
-            onProgress?.Invoke("Uploading reports...");
-            return true;
+            if (!match.Success) return null;
+
+            Log.Information($"Report created: {match.Groups[1].Value}");
+
+            return new List<LogResult>
+            {
+                LogResult.Pass($"{match.Groups[1].Value} report created", "base report"),
+                LogResult.Progress("Uploading reports...")
+            };
             }
 
-        private bool TryHandleNextCloudContinuation(string line, Action<string> onProgress)
+        /// <summary>
+        /// Обрабатывает продолжение вывода NextCloud (многострочные логи с ссылками).
+        /// </summary>
+        private LogResult HandleNextCloudContinuation(string line)
             {
             if (line.Contains(".json"))
                 {
                 _state = ParserState.Standard;
-                _updateRowCallback?.Invoke(-1, "Nextcloud: json report");
-                onProgress?.Invoke("Nextcloud: json report");
-                return true;
+                return LogResult.Pass("Nextcloud: json report", "uploader:nextcloud");
                 }
             if (line.Contains(".html"))
                 {
                 _state = ParserState.Standard;
-                _updateRowCallback?.Invoke(-1, "Nextcloud: html report");
-                onProgress?.Invoke("Nextcloud: html report");
-                return true;
+                return LogResult.Pass("Nextcloud: html report", "uploader:nextcloud");
                 }
+
             if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith(" "))
                 {
                 _state = ParserState.Standard;
-                return false;
+                return null;
                 }
-            return false;
+
+            return null;
             }
 
-        private bool TryHandleStandardResult(string line, Action<string, string, string> onResult)
+        /// <summary>
+        /// Парсит стандартные результаты тестов (PASS/FAIL/ERROR).
+        /// </summary>
+        private LogResult ParseStandardResult(string line)
             {
             var match = LogPatterns.StandardResult.Match(line);
-            if (!match.Success) return false;
-            onResult?.Invoke(match.Groups[1].Value.ToUpper(), match.Groups[2].Value.Trim(), null);
-            return true;
+            if (!match.Success) return null;
+
+            var status = match.Groups[1].Value.ToUpper();
+            var msg = match.Groups[2].Value.Trim();
+
+            Log.Debug($"Standard result: {status} - {msg}");
+            return new LogResult(MapStatusToLevel(status), msg);
+            }
+
+        /// <summary>
+        /// Преобразует строковый статус в LogLevel.
+        /// </summary>
+        private LogLevel MapStatusToLevel(string status)
+            {
+            switch (status?.ToUpper())
+                {
+                case "PASS": return LogLevel.Pass;
+                case "FAIL": return LogLevel.Fail;
+                case "ERROR": return LogLevel.Error;
+                default: return LogLevel.Pass;
+                }
+            }
+
+        /// <summary>
+        /// Проверяет, является ли имя загрузчика известным системе.
+        /// </summary>
+        private bool IsKnownUploader(string name)
+            {
+            if (string.IsNullOrEmpty(name)) return false;
+            name = name.ToLower();
+            return name.Contains("nextcloud") || name.Contains("feishu") || name.Contains("webhook");
+            }
+
+        /// <summary>
+        /// Сопоставляет хост (из ошибки соединения) с конкретным загрузчиком.
+        /// </summary>
+        private string MapHostToUploader(string host)
+            {
+            if (string.IsNullOrEmpty(host)) return null;
+            host = host.ToLower();
+
+            if (host.Contains("feishu.cn") || host.Contains("larksuite")) return "feishubot";
+            if (host.Contains("calydonqc.com")) return "webhook";
+            if (host.Contains("nextcloud")) return "nextcloud";
+
+            return null;
             }
         }
     }

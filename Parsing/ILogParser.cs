@@ -1,16 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using ATT_Wrapper.Components;
 
 namespace ATT_Wrapper.Parsing
     {
     public interface ILogParser
         {
-        bool ParseLine(string line, string statusFromLine,
-                      Action<string, string, string> onResult,
-                      Action<string> onProgress);
+        /// <summary>
+        /// Парсит строку лога и возвращает коллекцию событий.
+        /// Возвращает пустую коллекцию, если строка не содержит полезной информации.
+        /// </summary>
+        /// <param name="line">Очищенная строка лога</param>
+        /// <param name="statusFromLine">Статус, определенный по цвету строки (опционально)</param>
+        /// <returns>Поток результатов (Progress, Result, Error и т.д.)</returns>
+        IEnumerable<LogResult> Parse(string line, string statusFromLine = null);
         }
     }

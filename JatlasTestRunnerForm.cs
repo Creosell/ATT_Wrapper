@@ -366,33 +366,34 @@ namespace ATT_Wrapper
 
         // --- BUTTONS ---
         private void UpdateATT(object sender, EventArgs e) =>
-            RunTest(
-                new JatlasUpdateParser(),
-                "update.bat",
-                "",
-                // Передаем действие, которое выполнится после закрытия консоли
-                async () => await CheckUpdateStatusAsync()
-            );
+             RunTest(
+                 new JatlasUpdateParser(),
+                 "update.bat",
+                 "",
+                 // Передаем действие, которое выполнится после закрытия консоли
+                 async () => await CheckUpdateStatusAsync()
+             );
 
         private void CommonATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasTestParser(), // Аргументы удалены
                     "run-jatlas-auto.bat", "-l common --stage dev");
 
         private void SpecialATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasTestParser(), // Аргументы удалены
                     "run-jatlas-auto.bat", "-l special --stage dev");
 
         private void AgingATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser(), "run-jatlas-auto.bat", "-l aging --stage dev");
+            RunTest(new JatlasTestParser(), // Здесь уже было пусто, оставляем
+                    "run-jatlas-auto.bat", "-l aging --stage dev");
 
         private void CommonOfflineATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasTestParser(), // Аргументы удалены
                     "run-jatlas-auto.bat", "-l common --offline");
 
         private void MockReportATT(object sender, EventArgs e) =>
-            RunTest(new JatlasTestParser((idx, msg) => _gridController.UpdateLastRow(msg)),
+            RunTest(new JatlasTestParser(), // Аргументы удалены
             "run-jatlas.bat",
-            ".\\suites\\SDNB-14iA.yaml -mr \"C:\\Users\\Pavel\\Downloads\\Wrapper_test_reports\\SDNB-14iA\\SDNB-14iA-Good.json\" -l common --offline");
+            "suites\\SDNB-M16iA.yaml -l common --stage dev");
 
         private void KillTask(object sender, EventArgs e)
             {

@@ -9,6 +9,10 @@ using System.Windows.Forms;
 
 namespace ATT_Wrapper.Services
     {
+    /// <summary>
+    /// Отвечает за обработку потока вывода консоли, буферизацию,
+    /// очистку от ANSI-кодов и обновление пользовательского интерфейса.
+    /// </summary>
     public class ConsoleOutputHandler : IDisposable
         {
         private readonly ILogParser _parser;
@@ -20,7 +24,6 @@ namespace ATT_Wrapper.Services
         private readonly StringBuilder _lineBuffer = new StringBuilder();
         private readonly object _bufferLock = new object();
 
-        // Regex definitions
         private static readonly Regex AnsiSplitRegex = new Regex(@"(\x1B\[[0-9;?]*[ -/]*[@-~])", RegexOptions.Compiled);
         private static readonly Regex AnsiAllRegex = new Regex(@"(\x1B\[[\x30-\x3F]*[\x20-\x2F]*[\x40-\x7E]|\x1B\][^\x07\x1B]*(\x07|\x1B\\)|\x1B[PX^_].*?(\x07|\x1B\\))", RegexOptions.Compiled);
         private static readonly Regex PausePromptRegex = new Regex(@"(Press any key|Press Enter|any key to continue)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -31,6 +34,14 @@ namespace ATT_Wrapper.Services
         private static readonly Regex RunningTaskRegex = new Regex(@"Running task:\s+([^\x1b]+)(?:.*?)(\d+:\d+(?::\d+)?)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex NetworkTestRegex = new Regex(@"Running task:\s+(Switch network to|Test bitrate.*?network:)\s+([^\x1b]+)(?:.*?)(\d+/\d+s)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        /// <summary>
+        /// Инициализирует новый экземпляр обработчика вывода.
+        /// </summary>
+        /// <param name="parser">Парсер логов для извлечения смысловых данных.</param>
+        /// <param name="gridController">Контроллер таблицы результатов.</param>
+        /// <param name="statusManager">Менеджер иконок статуса отчетов.</param>
+        /// <param name="statusCallback">Колбэк для обновления текстовой строки статуса.</param>
+        /// <param name="enterCallback">Колбэк для автоматической отправки нажатия Enter.</param>
         public ConsoleOutputHandler(
             ILogParser parser,
             ResultsGridController gridController,
@@ -47,6 +58,12 @@ namespace ATT_Wrapper.Services
             Log.Information("Initialized.");
             }
 
+        /// <summary>
+        /// Принимает "сырой" кусок текста из консоли, буферизирует его
+        /// и инициирует обновление UI для полных строк.
+        /// </summary>
+        /// <param name="rawChunk">Фрагмент текста, полученный от процесса.</param>
+        /// <param name="rtbLog">RichTextBox для вывода логов.</param>
         public void ProcessLine(string rawChunk, RichTextBox rtbLog)
             {
             if (string.IsNullOrEmpty(rawChunk)) return;
@@ -79,6 +96,11 @@ namespace ATT_Wrapper.Services
                 }
             }
 
+        /// <summary>
+        /// Извлекает полные строки из буфера, обрабатывая символы возврата каретки и
+        /// запуская парсинг логики. Выполняется под блокировкой.
+        /// </summary>
+        /// <returns>Строка, готовая к выводу в UI, или null.</returns>
         private string ExtractCompleteLinesLocked()
             {
             string currentBuffer = _lineBuffer.ToString();
@@ -95,16 +117,12 @@ namespace ATT_Wrapper.Services
                     int length = i - startIndex;
                     string rawLine = currentBuffer.Substring(startIndex, length);
 
-                    // 1. Получаем чистую строку (с обработкой \r)
                     string collapsedLine = GetFinalLineState(rawLine);
-
-                    // 2. Пытаемся понять статус по цвету ДО очистки (для оффлайн ошибок)
                     string statusFromLineColor = TryGetStatusFromColor(rawLine);
 
                     if (!string.IsNullOrEmpty(collapsedLine))
                         {
                         sbFinalOutput.Append(collapsedLine).Append('\n');
-                        // 3. Парсим и отправляем в таблицу/статусы
                         ParseCleanLine(collapsedLine, statusFromLineColor);
                         }
 
@@ -120,52 +138,67 @@ namespace ATT_Wrapper.Services
             return sbFinalOutput.ToString();
             }
 
-        // === ИСПРАВЛЕННЫЙ МЕТОД ПАРСИНГА ===
+        /// <summary>
+        /// Очищает строку от ANSI-кодов, передает её парсеру и распределяет результаты
+        /// между таблицей результатов и статусными иконками.
+        /// </summary>
+        /// <param name="lineWithColors">Строка, содержащая визуальный текст (с возможными остатками цветов).</param>
+        /// <param name="statusFromLineColor">Предварительный статус (PASS/FAIL), извлеченный из цвета строки.</param>
         private void ParseCleanLine(string lineWithColors, string statusFromLineColor)
             {
-            // Удаляем цвета, чтобы парсер мог прочитать текст
             string cleanLine = AnsiAllRegex.Replace(lineWithColors, "").Trim();
 
-            if (!string.IsNullOrWhiteSpace(cleanLine))
+            if (string.IsNullOrWhiteSpace(cleanLine)) return;
+
+            try
                 {
-                try
-                    {
-                    // Вызываем парсер с 4 аргументами, как требует новый интерфейс
-                    _parser.ParseLine(
-                        cleanLine,
-                        statusFromLineColor,
+                var results = _parser.Parse(cleanLine, statusFromLineColor);
 
-                        // Callback onResult (Сюда приходят результаты)
-                        (status, msg, group) =>
+                foreach (var result in results)
+                    {
+                    if (result.Level == LogLevel.Progress)
                         {
-                            // Логика: если есть группа (uploader/report) -> в статус бар
-                            // Если группы нет (null) -> в таблицу (DGV)
+                        _statusCallback?.Invoke(result.Message);
+                        continue;
+                        }
 
-                            bool isStatusUpdate = !string.IsNullOrEmpty(group) &&
-                                                 ( group.StartsWith("uploader:") || group == "base report" );
+                    if (result.GroupKey == "base report")
+                        {
+                        continue;
+                        }
 
-                            if (isStatusUpdate)
-                                {
-                                _statusManager?.UpdateStatus(group, status);
-                                }
-                            else
-                                {
-                                // ЭТОЙ СТРОКИ НЕ БЫЛО ИЛИ ОНА БЫЛА НЕПРАВИЛЬНОЙ -> ПОЭТОМУ DGV НЕ ЗАПОЛНЯЛСЯ
-                                _gridController.HandleLogMessage(status, msg);
-                                }
-                        },
+                    string statusStr = result.Level.ToString().ToUpper();
 
-                        // Callback onProgress
-                        (progMsg) => _statusCallback?.Invoke(progMsg)
-                    );
+                    bool isStatusUpdate = !string.IsNullOrEmpty(result.GroupKey) &&
+                                          result.GroupKey.StartsWith("uploader:");
+
+                    if (isStatusUpdate)
+                        {
+                        string uploaderName = result.GroupKey.Replace("uploader:", "");
+                        _statusManager?.UpdateStatus(uploaderName, statusStr);
+                        }
+                    else
+                        {
+                        if (result.Level == LogLevel.Error && result.Message.Contains("RenderException"))
+                            {
+                            continue;
+                            }
+                        _gridController.HandleLogMessage(statusStr, result.Message);
+                        }
                     }
-                catch (Exception ex)
-                    {
-                    Log.Error($"Error parsing line: {ex.Message}");
-                    }
+                }
+            catch (Exception ex)
+                {
+                Log.Error($"Error parsing line: {ex.Message}");
                 }
             }
 
+        /// <summary>
+        /// Пытается определить статус PASS/FAIL по наличию специфических ANSI-цветов (красный/зеленый) в сырой строке.
+        /// Используется для случаев, когда текст лога не содержит явных слов PASS/FAIL.
+        /// </summary>
+        /// <param name="line">Сырая строка с ANSI-кодами.</param>
+        /// <returns>"PASS", "FAIL" или null.</returns>
         private string TryGetStatusFromColor(string line)
             {
             if (line.Contains("[31m")) return "FAIL";
@@ -173,8 +206,10 @@ namespace ATT_Wrapper.Services
             return null;
             }
 
-        // ... Остальные методы (GetFinalLineState, StatusUpdate, UpdateUi и т.д.) оставляем как есть ...
-
+        /// <summary>
+        /// Проверяет строку на наличие информации о текущей выполняемой задаче и вызывает колбэк статуса.
+        /// </summary>
+        /// <param name="rawChunk">Фрагмент текста.</param>
         private void StatusUpdate(string rawChunk)
             {
             var match = RunningTaskRegex.Match(rawChunk);
@@ -190,6 +225,11 @@ namespace ATT_Wrapper.Services
                 }
             }
 
+        /// <summary>
+        /// Обрабатывает символы возврата каретки (\r) и перезаписи строки, формируя финальный визуальный вид строки.
+        /// </summary>
+        /// <param name="rawLine">Сырая строка с управляющими символами.</param>
+        /// <returns>Строка, отражающая конечное состояние текста в консоли.</returns>
         private string GetFinalLineState(string rawLine)
             {
             if (string.IsNullOrEmpty(rawLine)) return rawLine;
@@ -213,6 +253,11 @@ namespace ATT_Wrapper.Services
             return finalContent ?? trimmed;
             }
 
+        /// <summary>
+        /// Извлекает все ANSI-коды из строки, игнорируя обычный текст.
+        /// </summary>
+        /// <param name="text">Входная строка.</param>
+        /// <returns>Строка, содержащая только ANSI-последовательности.</returns>
         private string ExtractAnsiCodes(string text)
             {
             if (string.IsNullOrEmpty(text)) return string.Empty;
@@ -223,6 +268,11 @@ namespace ATT_Wrapper.Services
             return sb.ToString();
             }
 
+        /// <summary>
+        /// Проверяет, состоит ли строка только из ANSI-кодов или пустых символов.
+        /// </summary>
+        /// <param name="text">Проверяемая строка.</param>
+        /// <returns>True, если полезного текста нет.</returns>
         private bool IsJustAnsiOrEmpty(string text)
             {
             if (string.IsNullOrEmpty(text)) return true;
@@ -230,6 +280,9 @@ namespace ATT_Wrapper.Services
             return string.IsNullOrEmpty(clean);
             }
 
+        /// <summary>
+        /// Проверяет буфер на наличие запроса "Press any key" и автоматически отправляет подтверждение.
+        /// </summary>
         private void CheckBufferForPauseLocked()
             {
             if (_lineBuffer.Length == 0) return;
@@ -242,6 +295,11 @@ namespace ATT_Wrapper.Services
                 }
             }
 
+        /// <summary>
+        /// Подготавливает текст для RichTextBox (удаляет мусорные символы) и вызывает метод отрисовки в UI-потоке.
+        /// </summary>
+        /// <param name="finalText">Текст для вывода.</param>
+        /// <param name="rtbLog">Целевой контрол RichTextBox.</param>
         private void UpdateUi(string finalText, RichTextBox rtbLog)
             {
             var sbUi = new StringBuilder();
@@ -273,6 +331,11 @@ namespace ATT_Wrapper.Services
                 AppendTextToRichTextBox(rtbLog, textToAppend);
             }
 
+        /// <summary>
+        /// Заменяет ANSI-коды перемещения курсора вправо на соответствующее количество пробелов.
+        /// </summary>
+        /// <param name="text">Входной текст с кодами перемещения курсора.</param>
+        /// <returns>Текст с пробелами вместо кодов.</returns>
         private string ReplaceCursorMovementWithSpaces(string text)
             {
             return CursorForwardRegex.Replace(text, match =>
@@ -284,13 +347,12 @@ namespace ATT_Wrapper.Services
             });
             }
 
-        private string SanitizeForLog(string input)
-            {
-            // (Оставьте вашу реализацию или можно удалить, если не используется для отладки)
-            if (string.IsNullOrEmpty(input)) return input;
-            return input.Replace("\x1b", "[ESC]");
-            }
-
+        /// <summary>
+        /// Непосредственно добавляет текст в RichTextBox, раскрашивая его согласно ANSI-кодам.
+        /// Должен вызываться только в UI-потоке.
+        /// </summary>
+        /// <param name="box">RichTextBox для обновления.</param>
+        /// <param name="text">Текст, содержащий ANSI-коды цветов.</param>
         private void AppendTextToRichTextBox(RichTextBox box, string text)
             {
             try
@@ -321,6 +383,9 @@ namespace ATT_Wrapper.Services
             catch (Exception ex) { Log.Error(ex, "Error appending to UI."); }
             }
 
+        /// <summary>
+        /// Интерпретирует отдельную ANSI-последовательность и обновляет текущие настройки цвета и шрифта.
+        /// </summary>
         private void ApplyAnsiCode(RichTextBox box, string ansiSeq, ref Color fg, ref Color bg, ref FontStyle style)
             {
             var match = Regex.Match(ansiSeq, @"\[([0-9;]*)([a-zA-Z])");
@@ -346,6 +411,12 @@ namespace ATT_Wrapper.Services
                 }
             }
 
+        /// <summary>
+        /// Преобразует числовой код ANSI-цвета в объект Color (Windows Forms).
+        /// </summary>
+        /// <param name="code">Индекс цвета (0-7).</param>
+        /// <param name="bright">Флаг повышенной яркости.</param>
+        /// <returns>Соответствующий цвет.</returns>
         private Color GetAnsiColor(int code, bool bright)
             {
             switch (code)
@@ -362,6 +433,9 @@ namespace ATT_Wrapper.Services
                 }
             }
 
+        /// <summary>
+        /// Освобождает ресурсы, очищает буферы.
+        /// </summary>
         public void Dispose()
             {
             Log.Information("Disposing resources.");

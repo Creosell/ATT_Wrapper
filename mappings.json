@@ -167,6 +167,11 @@
     "ufn": "Monitor ID"
   },
   {
+    "pattern": "monitor.Monitor_name",
+    "group": "Display",
+    "ufn": "Monitor ID"
+  },
+  {
     "pattern": "monitor manufacturer",
     "group": "Display",
     "ufn": "Monitor manufacturer"
@@ -211,7 +216,7 @@
     "ufn": "Wi-Fi MAC"
   },
   {
-    "pattern": "wifi mac addres u/l",
+    "pattern": "wifi mac address u/l",
     "group": "Wi-Fi",
     "ufn": "Wi-Fi MAC Uniqueness"
   },
