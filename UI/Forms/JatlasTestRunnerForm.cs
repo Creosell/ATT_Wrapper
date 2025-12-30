@@ -305,14 +305,17 @@ namespace ATT_Wrapper.UI.Forms
 
             Log.Information($"Creating output handler for script: {script}");
 
+            var renderer = new RichTextBoxConsoleRenderer(rtbLog);
+
             _outputHandler = new ConsoleOutputHandler(
                 parser,
-                _gridController,
-                _reportStatusManager,
-                SetStatus,
-                () =>
+                _gridController,      // Аргумент 2: Контроллер таблицы
+                _reportStatusManager, // Аргумент 3: Менеджер статусов
+                renderer,             // Аргумент 4: Рендерер (вместо rtbLog)
+                SetStatus,            // Аргумент 5: Колбэк статуса
+                () =>                 // Аргумент 6: Enter Callback (которого не хватало)
                 {
-                    Log.Information("Auto-enter callback triggered, sending Enter key");
+                    Log.Information("Auto-enter callback triggered");
                     _executor.SendInput("\r\n");
                 }
             );
@@ -388,7 +391,7 @@ namespace ATT_Wrapper.UI.Forms
                     {
                         try
                             {
-                            _outputHandler.ProcessLine(line, rtbLog);
+                            _outputHandler.ProcessLine(line);
                             }
                         catch (Exception ex)
                             {

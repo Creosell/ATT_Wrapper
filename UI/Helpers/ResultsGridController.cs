@@ -1,11 +1,12 @@
 ﻿using ATT_Wrapper.Services;
+using ATT_Wrapper.Interfaces;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
 namespace ATT_Wrapper.UI.Helpers
     {
-    public class ResultsGridController
+    public class ResultsGridController : IResultsGridController
         {
         // --- КОНСТАНТЫ СТИЛЕЙ (ШРИФТЫ И ЦВЕТА) ---
 

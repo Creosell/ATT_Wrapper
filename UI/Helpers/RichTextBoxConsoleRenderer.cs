@@ -10,7 +10,7 @@ namespace ATT_Wrapper.UI.Helpers
     public class RichTextBoxConsoleRenderer : IConsoleRenderer
         {
         private readonly RichTextBox _box;
-        // Эта регулярка нужна только для отрисовки (разделение на цветные блоки)
+        // Регулярка для разбиения текста на цветные блоки (ANSI)
         private static readonly Regex AnsiSplitRegex = new Regex(@"(\x1B\[[0-9;?]*[ -/]*[@-~])", RegexOptions.Compiled);
 
         public RichTextBoxConsoleRenderer(RichTextBox box)
@@ -36,26 +36,34 @@ namespace ATT_Wrapper.UI.Helpers
             {
             try
                 {
+                // Разбиваем текст по ANSI-кодам
                 string[] parts = AnsiSplitRegex.Split(text);
+
+                // Запоминаем текущее состояние курсора/цветов
                 Color currentForeColor = _box.SelectionColor.Name == "0" ? _box.ForeColor : _box.SelectionColor;
                 Color currentBackColor = _box.SelectionBackColor.Name == "0" ? _box.BackColor : _box.SelectionBackColor;
                 FontStyle currentStyle = _box.SelectionFont?.Style ?? FontStyle.Regular;
 
                 _box.SuspendLayout();
+
                 foreach (string part in parts)
                     {
                     if (string.IsNullOrEmpty(part)) continue;
+
+                    // Если это код цвета/стиля
                     if (part.StartsWith("\x1B["))
                         {
                         ApplyAnsiCode(part, ref currentForeColor, ref currentBackColor, ref currentStyle);
                         }
                     else
                         {
+                        // Если это текст - применяем текущие стили и пишем
                         _box.SelectionColor = currentForeColor;
                         _box.SelectionBackColor = currentBackColor;
+
                         using (var currentFont = _box.SelectionFont)
                             {
-                            var family = _box.Font.FontFamily; // Безопасное получение шрифта
+                            var family = _box.Font.FontFamily;
                             float size = _box.Font.Size;
                             if (currentFont != null) { family = currentFont.FontFamily; size = currentFont.Size; }
 
@@ -64,6 +72,7 @@ namespace ATT_Wrapper.UI.Helpers
                         _box.AppendText(part);
                         }
                     }
+
                 _box.ResumeLayout();
                 _box.ScrollToCaret();
                 }
@@ -77,6 +86,7 @@ namespace ATT_Wrapper.UI.Helpers
             {
             var match = Regex.Match(ansiSeq, @"\[([0-9;]*)([a-zA-Z])");
             if (!match.Success || match.Groups[2].Value != "m") return;
+
             string paramString = match.Groups[1].Value;
             string[] codes = string.IsNullOrEmpty(paramString) ? new[] { "0" } : paramString.Split(';');
 
