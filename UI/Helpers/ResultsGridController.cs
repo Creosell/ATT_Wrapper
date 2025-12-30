@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using ATT_Wrapper.Services;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace ATT_Wrapper.Components
+namespace ATT_Wrapper.UI.Helpers
     {
     public class ResultsGridController
         {

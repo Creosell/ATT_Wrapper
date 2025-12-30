@@ -1,6 +1,9 @@
-﻿using ATT_Wrapper.Components;
+﻿using ATT_Wrapper.Interfaces;
+using ATT_Wrapper.Models;
 using ATT_Wrapper.Parsing;
 using ATT_Wrapper.Services;
+using ATT_Wrapper.UI.Controls;
+using ATT_Wrapper.UI.Helpers;
 using MaterialSkin;
 using MaterialSkin.Controls;
 using Serilog;
@@ -13,7 +16,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace ATT_Wrapper
+namespace ATT_Wrapper.UI.Forms
     {
     /// <summary>
     /// Главная форма приложения. Управляет запуском тестов, отображением логов

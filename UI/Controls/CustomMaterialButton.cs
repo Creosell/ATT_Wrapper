@@ -5,8 +5,9 @@ using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
 
-namespace ATT_Wrapper.Components
+namespace ATT_Wrapper.UI.Controls
     {
+
     public class CustomMaterialButton : MaterialButton
         {
         private static readonly FieldInfo _textField = typeof(Control).GetField("text", BindingFlags.Instance | BindingFlags.NonPublic);

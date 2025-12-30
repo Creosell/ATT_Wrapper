@@ -132,10 +132,10 @@
   <ItemGroup>
     <Compile Include="Models\CheckMapping.cs" />
     <Compile Include="Services\GitRunner.cs" />
-    <Compile Include="Services\Interfaces\IConsoleRenderer.cs" />
-    <Compile Include="Services\Interfaces\IGitRunner.cs" />
-    <Compile Include="Services\Interfaces\IReportStatusManager.cs" />
-    <Compile Include="Services\Interfaces\IResultsGridController.cs" />
+    <Compile Include="Interfaces\IConsoleRenderer.cs" />
+    <Compile Include="Interfaces\IGitRunner.cs" />
+    <Compile Include="Interfaces\IReportStatusManager.cs" />
+    <Compile Include="Interfaces\IResultsGridController.cs" />
     <Compile Include="UI\Controls\CustomMaterialButton.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -152,7 +152,7 @@
       <DependentUpon>JatlasTestRunnerForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Services\MappingManager.cs" />
-    <Compile Include="Parsing\ILogParser.cs" />
+    <Compile Include="Interfaces\ILogParser.cs" />
     <Compile Include="Parsing\JatlasUpdateParser.cs" />
     <Compile Include="Parsing\LogPatterns.cs" />
     <Compile Include="Parsing\JatlasTestParser.cs" />

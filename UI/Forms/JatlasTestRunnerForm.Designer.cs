@@ -1,4 +1,4 @@
-﻿namespace ATT_Wrapper
+﻿namespace ATT_Wrapper.UI.Forms
     {
     partial class JatlasTestRunnerForm
         {
@@ -29,9 +29,9 @@
         private void InitializeComponent()
             {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(JatlasTestRunnerForm));
-            this.btnUpdate = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.btnCommon = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.btnSpecial = new ATT_Wrapper.Components.CustomMaterialButton();
+            this.btnUpdate = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.btnCommon = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.btnSpecial = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
             this.dgvResults = new System.Windows.Forms.DataGridView();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.statusLabel = new System.Windows.Forms.ToolStripStatusLabel();
@@ -42,19 +42,19 @@
             this.tabControlActions = new System.Windows.Forms.TabControl();
             this.mainButtonsTab = new System.Windows.Forms.TabPage();
             this.mainButtonsLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
-            this.btnAging = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.mockReport = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.taskKillBtnMain = new ATT_Wrapper.Components.CustomMaterialButton();
+            this.btnAging = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.mockReport = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.taskKillBtnMain = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
             this.extraButtonsTab = new System.Windows.Forms.TabPage();
             this.extraButtonsLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
-            this.btnCommonOffline = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.taskKillBtnExtra = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.materialButton1 = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.materialButton2 = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.materialButton3 = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.materialButton4 = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.materialButton5 = new ATT_Wrapper.Components.CustomMaterialButton();
-            this.materialButton6 = new ATT_Wrapper.Components.CustomMaterialButton();
+            this.btnCommonOffline = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.taskKillBtnExtra = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.materialButton1 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.materialButton2 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.materialButton3 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.materialButton4 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.materialButton5 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
+            this.materialButton6 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
             this.formTableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
             this.ButtonsAndStatusesPanel = new System.Windows.Forms.TableLayoutPanel();
             this.ReportStatusLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
@@ -751,9 +751,9 @@
             }
 
         #endregion
-        private Components.CustomMaterialButton btnUpdate;
-        private Components.CustomMaterialButton btnCommon;
-        private Components.CustomMaterialButton btnSpecial;
+        private UI.Controls.CustomMaterialButton btnUpdate;
+        private UI.Controls.CustomMaterialButton btnCommon;
+        private UI.Controls.CustomMaterialButton btnSpecial;
         private System.Windows.Forms.DataGridView dgvResults;
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel statusLabel;
@@ -767,11 +767,11 @@
         private System.Windows.Forms.TableLayoutPanel formTableLayoutPanel;
         private System.Windows.Forms.FlowLayoutPanel mainButtonsLayoutPanel;
         private System.Windows.Forms.FlowLayoutPanel extraButtonsLayoutPanel;
-        private Components.CustomMaterialButton btnAging;
-        private Components.CustomMaterialButton taskKillBtnMain;
-        private Components.CustomMaterialButton btnCommonOffline;
-        private Components.CustomMaterialButton taskKillBtnExtra;
-        private Components.CustomMaterialButton mockReport;
+        private UI.Controls.CustomMaterialButton btnAging;
+        private UI.Controls.CustomMaterialButton taskKillBtnMain;
+        private UI.Controls.CustomMaterialButton btnCommonOffline;
+        private UI.Controls.CustomMaterialButton taskKillBtnExtra;
+        private UI.Controls.CustomMaterialButton mockReport;
         private System.Windows.Forms.TableLayoutPanel ButtonsAndStatusesPanel;
         private System.Windows.Forms.FlowLayoutPanel ReportStatusLayoutPanel;
         private System.Windows.Forms.TableLayoutPanel NextcloudStatusTable;
@@ -784,11 +784,11 @@
         private System.Windows.Forms.PictureBox FeishuStatusIcon;
         private System.Windows.Forms.Label FeishuStatusLabel;
         private System.Windows.Forms.Label ReportStatusLabel;
-        private Components.CustomMaterialButton materialButton1;
-        private Components.CustomMaterialButton materialButton2;
-        private Components.CustomMaterialButton materialButton3;
-        private Components.CustomMaterialButton materialButton4;
-        private Components.CustomMaterialButton materialButton5;
-        private Components.CustomMaterialButton materialButton6;
+        private UI.Controls.CustomMaterialButton materialButton1;
+        private UI.Controls.CustomMaterialButton materialButton2;
+        private UI.Controls.CustomMaterialButton materialButton3;
+        private UI.Controls.CustomMaterialButton materialButton4;
+        private UI.Controls.CustomMaterialButton materialButton5;
+        private UI.Controls.CustomMaterialButton materialButton6;
         }
     }

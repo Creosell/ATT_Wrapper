@@ -1,5 +1,6 @@
-﻿using ATT_Wrapper.Components;
-using ATT_Wrapper.Parsing;
+﻿using ATT_Wrapper.Interfaces;
+using ATT_Wrapper.Models;
+using ATT_Wrapper.UI.Helpers;
 using Serilog;
 using System;
 using System.Drawing;

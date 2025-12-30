@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace ATT_Wrapper
+namespace ATT_Wrapper.Services
     {
     /// <summary>
     /// Управляет загрузкой конфигурации маппинга и поиском соответствий в логах.

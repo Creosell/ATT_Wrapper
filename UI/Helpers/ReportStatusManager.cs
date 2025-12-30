@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
-namespace ATT_Wrapper.Components
+namespace ATT_Wrapper.UI.Helpers
     {
     public class ReportStatusManager
         {

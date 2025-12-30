@@ -1,4 +1,5 @@
-﻿using ATT_Wrapper.Components;
+﻿using ATT_Wrapper.Interfaces;
+using ATT_Wrapper.Models;
 using System.Collections.Generic;
 
 namespace ATT_Wrapper.Parsing

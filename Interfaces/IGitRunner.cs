@@ -1,4 +1,4 @@
-﻿namespace ATT_Wrapper.Services
+﻿namespace ATT_Wrapper.Interfaces
     {
     /// <summary>
     /// Интерфейс для запуска команд Git.

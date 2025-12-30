@@ -1,11 +1,11 @@
-﻿using ATT_Wrapper.Components;
+﻿using ATT_Wrapper.UI.Controls;
 using MaterialSkin.Controls;
 using Serilog;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace ATT_Wrapper.Services
+namespace ATT_Wrapper.UI.Helpers
     {
     public static class ThemeManager
         {

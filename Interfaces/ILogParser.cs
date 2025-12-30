@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-using ATT_Wrapper.Components;
+﻿using ATT_Wrapper.Models;
+using System.Collections.Generic;
 
-namespace ATT_Wrapper.Parsing
+namespace ATT_Wrapper.Interfaces
     {
     public interface ILogParser
         {

@@ -1,4 +1,4 @@
-﻿namespace ATT_Wrapper.Services.Interfaces
+﻿namespace ATT_Wrapper.Interfaces
     {
     public interface IConsoleRenderer
         {

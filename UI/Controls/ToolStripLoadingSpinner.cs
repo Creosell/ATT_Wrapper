@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace ATT_Wrapper.Components
+namespace ATT_Wrapper.UI.Controls
     {
 
     /// <summary>

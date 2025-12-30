@@ -1,4 +1,4 @@
-﻿using ATT_Wrapper.Components;
+﻿using ATT_Wrapper.Interfaces;
 using ATT_Wrapper.Models; // LogResult теперь здесь
 using Serilog;
 using System;
