@@ -1,13 +1,13 @@
-﻿using System;
+﻿using ATT_Wrapper.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using ATT_Wrapper.Interfaces;
 
-namespace ATT_Wrapper.UI.Helpers 
+namespace ATT_Wrapper.UI.Helpers
     {
-    public class ReportStatusManager : IReportStatusManager 
+    public class ReportStatusManager : IReportStatusManager
         {
         // Храним пару: Иконка (PictureBox) и Текст (Label)
         private readonly Dictionary<string, (PictureBox Icon, Label Label)> _items;

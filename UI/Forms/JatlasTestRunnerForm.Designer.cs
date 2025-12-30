@@ -49,12 +49,6 @@
             this.extraButtonsLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.btnCommonOffline = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
             this.taskKillBtnExtra = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
-            this.materialButton1 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
-            this.materialButton2 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
-            this.materialButton3 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
-            this.materialButton4 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
-            this.materialButton5 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
-            this.materialButton6 = new ATT_Wrapper.UI.Controls.CustomMaterialButton();
             this.formTableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
             this.ButtonsAndStatusesPanel = new System.Windows.Forms.TableLayoutPanel();
             this.ReportStatusLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
@@ -224,7 +218,7 @@
             this.tabExpert.Location = new System.Drawing.Point(4, 37);
             this.tabExpert.Name = "tabExpert";
             this.tabExpert.Padding = new System.Windows.Forms.Padding(3);
-            this.tabExpert.Size = new System.Drawing.Size(545, 458);
+            this.tabExpert.Size = new System.Drawing.Size(657, 554);
             this.tabExpert.TabIndex = 1;
             this.tabExpert.Text = "Expert";
             this.tabExpert.UseVisualStyleBackColor = true;
@@ -237,7 +231,7 @@
             this.rtbLog.Location = new System.Drawing.Point(3, 3);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(539, 452);
+            this.rtbLog.Size = new System.Drawing.Size(651, 548);
             this.rtbLog.TabIndex = 0;
             this.rtbLog.TabStop = false;
             this.rtbLog.Text = "";
@@ -365,12 +359,6 @@
             this.extraButtonsLayoutPanel.AutoScroll = true;
             this.extraButtonsLayoutPanel.Controls.Add(this.btnCommonOffline);
             this.extraButtonsLayoutPanel.Controls.Add(this.taskKillBtnExtra);
-            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton1);
-            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton2);
-            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton3);
-            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton4);
-            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton5);
-            this.extraButtonsLayoutPanel.Controls.Add(this.materialButton6);
             this.extraButtonsLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.extraButtonsLayoutPanel.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.extraButtonsLayoutPanel.Location = new System.Drawing.Point(3, 3);
@@ -415,133 +403,13 @@
             this.taskKillBtnExtra.MouseState = MaterialSkin.MouseState.HOVER;
             this.taskKillBtnExtra.Name = "taskKillBtnExtra";
             this.taskKillBtnExtra.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.taskKillBtnExtra.Size = new System.Drawing.Size(314, 36);
+            this.taskKillBtnExtra.Size = new System.Drawing.Size(160, 36);
             this.taskKillBtnExtra.TabIndex = 14;
             this.taskKillBtnExtra.Text = "Stop task";
             this.taskKillBtnExtra.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.taskKillBtnExtra.UseAccentColor = false;
             this.taskKillBtnExtra.UseVisualStyleBackColor = true;
             this.taskKillBtnExtra.Click += new System.EventHandler(this.KillTask);
-            // 
-            // materialButton1
-            // 
-            this.materialButton1.AutoSize = false;
-            this.materialButton1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.materialButton1.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            this.materialButton1.Depth = 0;
-            this.materialButton1.HighEmphasis = true;
-            this.materialButton1.Icon = null;
-            this.materialButton1.Location = new System.Drawing.Point(4, 102);
-            this.materialButton1.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.materialButton1.MouseState = MaterialSkin.MouseState.HOVER;
-            this.materialButton1.Name = "materialButton1";
-            this.materialButton1.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.materialButton1.Size = new System.Drawing.Size(314, 36);
-            this.materialButton1.TabIndex = 15;
-            this.materialButton1.Text = "SDMN-M27-MotherBoardWithWiFiCard";
-            this.materialButton1.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            this.materialButton1.UseAccentColor = false;
-            this.materialButton1.UseVisualStyleBackColor = true;
-            // 
-            // materialButton2
-            // 
-            this.materialButton2.AutoSize = false;
-            this.materialButton2.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.materialButton2.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            this.materialButton2.Depth = 0;
-            this.materialButton2.HighEmphasis = true;
-            this.materialButton2.Icon = null;
-            this.materialButton2.Location = new System.Drawing.Point(4, 150);
-            this.materialButton2.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.materialButton2.MouseState = MaterialSkin.MouseState.HOVER;
-            this.materialButton2.Name = "materialButton2";
-            this.materialButton2.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.materialButton2.Size = new System.Drawing.Size(314, 36);
-            this.materialButton2.TabIndex = 16;
-            this.materialButton2.Text = "SDMN-M27-MotherBoardWithWiFiCard";
-            this.materialButton2.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            this.materialButton2.UseAccentColor = false;
-            this.materialButton2.UseVisualStyleBackColor = true;
-            // 
-            // materialButton3
-            // 
-            this.materialButton3.AutoSize = false;
-            this.materialButton3.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.materialButton3.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            this.materialButton3.Depth = 0;
-            this.materialButton3.HighEmphasis = true;
-            this.materialButton3.Icon = null;
-            this.materialButton3.Location = new System.Drawing.Point(4, 198);
-            this.materialButton3.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.materialButton3.MouseState = MaterialSkin.MouseState.HOVER;
-            this.materialButton3.Name = "materialButton3";
-            this.materialButton3.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.materialButton3.Size = new System.Drawing.Size(314, 36);
-            this.materialButton3.TabIndex = 17;
-            this.materialButton3.Text = "SDMN-M27-MotherBoardWithWiFiCard";
-            this.materialButton3.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            this.materialButton3.UseAccentColor = false;
-            this.materialButton3.UseVisualStyleBackColor = true;
-            // 
-            // materialButton4
-            // 
-            this.materialButton4.AutoSize = false;
-            this.materialButton4.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.materialButton4.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            this.materialButton4.Depth = 0;
-            this.materialButton4.HighEmphasis = true;
-            this.materialButton4.Icon = null;
-            this.materialButton4.Location = new System.Drawing.Point(4, 246);
-            this.materialButton4.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.materialButton4.MouseState = MaterialSkin.MouseState.HOVER;
-            this.materialButton4.Name = "materialButton4";
-            this.materialButton4.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.materialButton4.Size = new System.Drawing.Size(314, 36);
-            this.materialButton4.TabIndex = 18;
-            this.materialButton4.Text = "SDMN-M27-MotherBoardWithWiFiCard";
-            this.materialButton4.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            this.materialButton4.UseAccentColor = false;
-            this.materialButton4.UseVisualStyleBackColor = true;
-            // 
-            // materialButton5
-            // 
-            this.materialButton5.AutoSize = false;
-            this.materialButton5.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.materialButton5.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            this.materialButton5.Depth = 0;
-            this.materialButton5.HighEmphasis = true;
-            this.materialButton5.Icon = null;
-            this.materialButton5.Location = new System.Drawing.Point(4, 294);
-            this.materialButton5.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.materialButton5.MouseState = MaterialSkin.MouseState.HOVER;
-            this.materialButton5.Name = "materialButton5";
-            this.materialButton5.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.materialButton5.Size = new System.Drawing.Size(314, 36);
-            this.materialButton5.TabIndex = 19;
-            this.materialButton5.Text = "SDMN-M27-MotherBoardWithWiFiCard";
-            this.materialButton5.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            this.materialButton5.UseAccentColor = false;
-            this.materialButton5.UseVisualStyleBackColor = true;
-            // 
-            // materialButton6
-            // 
-            this.materialButton6.AutoSize = false;
-            this.materialButton6.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.materialButton6.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            this.materialButton6.Depth = 0;
-            this.materialButton6.HighEmphasis = true;
-            this.materialButton6.Icon = null;
-            this.materialButton6.Location = new System.Drawing.Point(4, 342);
-            this.materialButton6.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.materialButton6.MouseState = MaterialSkin.MouseState.HOVER;
-            this.materialButton6.Name = "materialButton6";
-            this.materialButton6.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.materialButton6.Size = new System.Drawing.Size(314, 36);
-            this.materialButton6.TabIndex = 20;
-            this.materialButton6.Text = "SDMN-M27-MotherBoardWithWiFiCard";
-            this.materialButton6.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            this.materialButton6.UseAccentColor = false;
-            this.materialButton6.UseVisualStyleBackColor = true;
             // 
             // formTableLayoutPanel
             // 
@@ -784,11 +652,5 @@
         private System.Windows.Forms.PictureBox FeishuStatusIcon;
         private System.Windows.Forms.Label FeishuStatusLabel;
         private System.Windows.Forms.Label ReportStatusLabel;
-        private UI.Controls.CustomMaterialButton materialButton1;
-        private UI.Controls.CustomMaterialButton materialButton2;
-        private UI.Controls.CustomMaterialButton materialButton3;
-        private UI.Controls.CustomMaterialButton materialButton4;
-        private UI.Controls.CustomMaterialButton materialButton5;
-        private UI.Controls.CustomMaterialButton materialButton6;
         }
     }

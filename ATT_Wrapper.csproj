@@ -130,7 +130,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Models\CheckMapping.cs" />
+    <Compile Include="Models\MappingItem.cs" />
     <Compile Include="Services\GitRunner.cs" />
     <Compile Include="Interfaces\IConsoleRenderer.cs" />
     <Compile Include="Interfaces\IGitRunner.cs" />

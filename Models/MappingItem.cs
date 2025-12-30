@@ -5,7 +5,7 @@ namespace ATT_Wrapper.Models
     /// <summary>
     /// Модель данных для сопоставления строки лога с группой и именем проверки.
     /// </summary>
-    public class CheckMapping
+    public class MappingItem
         {
         [JsonProperty("pattern")]
         public string Pattern { get; set; }

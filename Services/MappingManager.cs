@@ -18,7 +18,7 @@ namespace ATT_Wrapper.Services
         private class CachedMapping
             {
             public Regex Regex { get; set; }
-            public CheckMapping Data { get; set; }
+            public MappingItem Data { get; set; }
             }
 
         private List<CachedMapping> _cachedMappings;
@@ -57,14 +57,14 @@ namespace ATT_Wrapper.Services
         private void LoadConfig(string path)
             {
             _cachedMappings = new List<CachedMapping>();
-            List<CheckMapping> rawMappings = null;
+            List<MappingItem> rawMappings = null;
 
             try
                 {
                 if (File.Exists(path))
                     {
                     string json = File.ReadAllText(path);
-                    rawMappings = JsonConvert.DeserializeObject<List<CheckMapping>>(json);
+                    rawMappings = JsonConvert.DeserializeObject<List<MappingItem>>(json);
                     }
                 }
             catch
