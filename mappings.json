@@ -245,9 +245,9 @@
     "ufn": "PD Firmware"
   },
   {
-    "pattern": "usb",
+    "pattern": "USB port ([\\w-]+)",
     "group": "Peripherals",
-    "ufn": "USB Ports"
+    "ufn": "USB Port $1"
   },
   {
     "pattern": "camera",
@@ -345,28 +345,19 @@
   },
 
   // Wi-Fi parameters group
+ 
   {
-    "pattern": "Switching to Wi-Fi QA_2G",
+    "pattern": "Switching to Wi-Fi .*?(2G|2\\.4G)",
     "group": "Wi-Fi 2.4 GHz",
     "ufn": "Connecting Wi-Fi"
   },
   {
-    "pattern": "Switching to Wi-Fi QA_Main_2.4G",
-    "group": "Wi-Fi 2.4 GHz",
-    "ufn": "Connecting Wi-Fi"
-  },
-  {
-    "pattern": "Wi-Fi 2GHz bitrate",
+    "pattern": "Wi-Fi 2\\.?4?GHz bitrate",
     "group": "Wi-Fi 2.4 GHz",
     "ufn": "Bitrate"
   },
   {
-    "pattern": "Switching to Wi-Fi QA_5G",
-    "group": "Wi-Fi 5 GHz",
-    "ufn": "Connecting Wi-Fi"
-  },
-  {
-    "pattern": "Switching to Wi-Fi QA_Main_5G",
+    "pattern": "Switching to Wi-Fi .*?5G",
     "group": "Wi-Fi 5 GHz",
     "ufn": "Connecting Wi-Fi"
   },

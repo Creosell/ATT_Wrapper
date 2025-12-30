@@ -262,6 +262,7 @@ namespace ATT_Wrapper.Parsing
             return new LogResult(MapStatusToLevel(status), msg);
             }
 
+
         /// <summary>
         /// Преобразует строковый статус в LogLevel.
         /// </summary>

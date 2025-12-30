@@ -174,8 +174,7 @@ namespace ATT_Wrapper
         /// </summary>
         private void SetupDataGridView()
             {
-            string mappingPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mappings.json");
-            _mapper = new MappingManager(mappingPath);
+            _mapper = MappingManager.Instance;
             _gridController = new ResultsGridController(dgvResults, _mapper);
             }
 

@@ -1,78 +1,129 @@
-﻿using Newtonsoft.Json;
+﻿using ATT_Wrapper.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using ATT_Wrapper.Models;
+using System.Text.RegularExpressions;
 
 namespace ATT_Wrapper
     {
-
-
     /// <summary>
     /// Управляет загрузкой конфигурации маппинга и поиском соответствий в логах.
+    /// Реализован как Singleton (Lazy) с предварительной компиляцией регулярных выражений.
     /// </summary>
     public class MappingManager
         {
-        private List<CheckMapping> _mappings;
+        // Внутренняя структура для хранения скомпилированной регулярки и данных маппинга
+        private class CachedMapping
+            {
+            public Regex Regex { get; set; }
+            public CheckMapping Data { get; set; }
+            }
+
+        private List<CachedMapping> _cachedMappings;
+
+        // Путь к конфигу по умолчанию
+        private static readonly string DefaultConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mappings.json");
+
+        // Ленивая инициализация Singleton-а
+        private static readonly Lazy<MappingManager> _lazyInstance =
+            new Lazy<MappingManager>(() => new MappingManager(DefaultConfigPath));
 
         /// <summary>
-        /// Инициализирует менеджер и загружает конфигурацию из указанного файла.
+        /// Глобальный экземпляр менеджера.
+        /// При первом обращении загрузит конфиг из mappings.json.
         /// </summary>
-        /// <param name="configPath">Путь к файлу mappings.json.</param>
-        public MappingManager(string configPath)
+        public static MappingManager Instance => _lazyInstance.Value;
+
+        /// <summary>
+        /// Приватный конструктор для Singleton.
+        /// </summary>
+        private MappingManager(string configPath)
             {
             LoadConfig(configPath);
             }
 
+        // Оставляем возможность создать локальный экземпляр с другим путем, если нужно для тестов
+        public MappingManager(string configPath, bool isTest = false)
+            {
+            _ = isTest;
+            LoadConfig(configPath);
+            }
+
         /// <summary>
-        /// Загружает и десериализует JSON-конфигурацию.
-        /// В случае ошибки инициализирует пустой список, чтобы избежать падения приложения.
+        /// Загружает JSON и компилирует регулярные выражения один раз.
         /// </summary>
         private void LoadConfig(string path)
             {
+            _cachedMappings = new List<CachedMapping>();
+            List<CheckMapping> rawMappings = null;
+
             try
                 {
                 if (File.Exists(path))
                     {
                     string json = File.ReadAllText(path);
-                    _mappings = JsonConvert.DeserializeObject<List<CheckMapping>>(json);
-                    }
-                else
-                    {
-                    _mappings = new List<CheckMapping>();
+                    rawMappings = JsonConvert.DeserializeObject<List<CheckMapping>>(json);
                     }
                 }
             catch
                 {
-                // В случае поврежденного JSON или ошибки доступа создаем пустой список
-                _mappings = new List<CheckMapping>();
+                // Логирование ошибки можно добавить здесь
+                }
+
+            // Если загрузка не удалась или файл пуст, инициализируем пустым списком
+            if (rawMappings == null) return;
+
+            // Пре-компиляция регулярок
+            foreach (var mapping in rawMappings)
+                {
+                if (!string.IsNullOrWhiteSpace(mapping.Pattern))
+                    {
+                    try
+                        {
+                        // RegexOptions.Compiled ускоряет выполнение, но замедляет запуск (идеально для Singleton)
+                        var regex = new Regex(mapping.Pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+                        _cachedMappings.Add(new CachedMapping
+                            {
+                            Regex = regex,
+                            Data = mapping
+                            });
+                        }
+                    catch
+                        {
+                        // Игнорируем некорректные регулярки в конфиге
+                        }
+                    }
                 }
             }
 
         /// <summary>
-        /// Ищет совпадение в строке лога. Использует принцип "самого длинного совпадения":
-        /// если найдено несколько паттернов, выбирается тот, который длиннее.
+        /// Ищет совпадение в строке лога, используя заранее скомпилированные регулярки.
         /// </summary>
-        /// <param name="logMessage">Анализируемая строка лога.</param>
-        /// <returns>Кортеж (Группа, Имя проверки) или (null, null), если совпадение не найдено.</returns>
         public (string group, string ufn) IdentifyCheck(string logMessage)
             {
-            if (_mappings == null || string.IsNullOrWhiteSpace(logMessage))
+            if (_cachedMappings == null || _cachedMappings.Count == 0 || string.IsNullOrWhiteSpace(logMessage))
                 return (null, null);
 
-            // 1. Находим все паттерны, которые содержатся в строке
-            var matches = _mappings.Where(m =>
-                logMessage.IndexOf(m.Pattern, StringComparison.OrdinalIgnoreCase) >= 0
-            );
+            // 1. Проходим по кэшированному списку
+            var bestCandidate = _cachedMappings
+                .Select(m => new
+                    {
+                    Cached = m,
+                    Match = m.Regex.Match(logMessage) // Используем готовую регулярку
+                    })
+                .Where(x => x.Match.Success)
+                // 2. Сортируем по длине паттерна (самый специфичный выигрывает)
+                .OrderByDescending(x => x.Cached.Data.Pattern.Length)
+                .FirstOrDefault();
 
-            // 2. Сортируем по убыванию длины паттерна и берем самый длинный.
-            // Это решает проблему перекрытия (например, "wifi mac" vs "wifi mac address").
-            var bestMatch = matches.OrderByDescending(m => m.Pattern.Length).FirstOrDefault();
-
-            if (bestMatch != null)
+            if (bestCandidate != null)
                 {
-                return (bestMatch.Group, bestMatch.Ufn);
+                // 3. Формируем итоговое имя с подстановкой групп ($1, $2...)
+                string dynamicUfn = bestCandidate.Match.Result(bestCandidate.Cached.Data.Ufn);
+                return (bestCandidate.Cached.Data.Group, dynamicUfn);
                 }
 
             return (null, null);
