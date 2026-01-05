@@ -221,6 +221,13 @@
     "ufn": "Wi-Fi MAC Uniqueness"
   },
 
+  // --- Audio Group (New) ---
+  {
+    "pattern": "Audio adapter",
+    "group": "Audio",
+    "ufn": "Audio Adapter"
+  },
+
   // Ethernet parameters group
   {
     "pattern": "ethernet adapter",
@@ -231,6 +238,11 @@
     "pattern": "ethernet mac",
     "group": "Ethernet",
     "ufn": "Ethernet MAC"
+  },
+  {
+    "pattern": "Ethernet MAC address U/L",
+    "group": "Ethernet",
+    "ufn": "MAC Address Uniqueness"
   },
 
   // Peripherals parameters group
@@ -345,7 +357,7 @@
   },
 
   // Wi-Fi parameters group
- 
+
   {
     "pattern": "Switching to Wi-Fi .*?(2G|2\\.4G)",
     "group": "Wi-Fi 2.4 GHz",
