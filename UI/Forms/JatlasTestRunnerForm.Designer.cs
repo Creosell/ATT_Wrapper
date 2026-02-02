@@ -319,6 +319,7 @@
             this.mockReport.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             this.mockReport.UseAccentColor = false;
             this.mockReport.UseVisualStyleBackColor = true;
+            this.mockReport.Visible = false;
             this.mockReport.Click += new System.EventHandler(this.MockReportATT);
             // 
             // taskKillBtnMain
